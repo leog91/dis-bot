@@ -1,5 +1,7 @@
 require("dotenv").config();
 
+const { findUser, LEOG, DREVI, TINCHO, EZEQ } = require("./data");
+
 const Discord = require("discord.js");
 // const client = new Discord.Client();
 const client = new Discord.Client({ intents: ["GUILDS", "GUILD_MESSAGES"] });
@@ -26,22 +28,21 @@ client.on("messageDelete", (msg) => {
 });
 
 client.on("message", (msg) => {
-  //drevi
-  if (msg.author.id === "233728781167230996") {
+  if (msg.author.id === findUser(DREVI).id) {
     // msg.reply(`quien so? `);
     msg.react("🤢");
   }
-  if (msg.author.id === "158794899083231232") {
+
+  if (msg.author.id === findUser(LEOG).id) {
     //   msg.reply(`^_^ ${msg.author.username} `);
     msg.react("❤️");
   }
 
-  //martin
-  if (msg.author.id === "158805057775599625") {
+  if (msg.author.id === findUser(TINCHO).id) {
     msg.react("🤭");
   }
-  //ezeq
-  if (msg.author.id === "158793676116590593") {
+
+  if (msg.author.id === findUser(EZEQ).id) {
     msg.react("👻");
   }
 });
