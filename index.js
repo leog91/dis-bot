@@ -1,6 +1,16 @@
 require("dotenv").config();
 
-const { findUser, LEOG, DREVI, TINCHO, EZEQ } = require("./data");
+const {
+  findUser,
+  LEOG,
+  GD92,
+  MAVE,
+  DREVI,
+  TINCHO,
+  EZEQ,
+  PABLOC,
+  ANDY,
+} = require("./data");
 
 const Discord = require("discord.js");
 // const client = new Discord.Client();
@@ -20,6 +30,9 @@ client.on("message", (msg) => {
     msg.reply("BUEN DIA GRUPO");
   }
 });
+//
+
+//
 
 client.on("messageDelete", (msg) => {
   msg.channel.send("Qué borra gato");
@@ -36,6 +49,19 @@ client.on("message", (msg) => {
   if (msg.author.id === findUser(LEOG).id) {
     //   msg.reply(`^_^ ${msg.author.username} `);
     msg.react("❤️");
+  }
+
+  if (msg.author.id === findUser(GD92).id) {
+    msg.react("☕");
+  }
+  if (msg.author.id === findUser(MAVE).id) {
+    msg.react("🌭");
+  }
+  if (msg.author.id === findUser(PABLOC).id) {
+    msg.react("🍆");
+  }
+  if (msg.author.id === findUser(ANDY).id) {
+    msg.react("🦖");
   }
 
   if (msg.author.id === findUser(TINCHO).id) {
