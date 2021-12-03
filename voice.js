@@ -15,7 +15,7 @@ console.log("++++++++++", generateDependencyReport());
 
 // const song = require("./droplet.mp3");
 // let data = fs.readFile(pth.join(__dirname, "droplet.mp3"));
-let data = fs.readFileSync(pth.join(__dirname, "droplet.mp3"));
+// let data = fs.readFileSync(pth.join(__dirname, "droplet.mp3"));
 // console.log(data + "");
 
 // let datas;
@@ -40,7 +40,7 @@ function playSong() {
   // );
 
   //   const resource = createAudioResource("./droplet.mp3");
-  const resource = createAudioResource("./knock2.mp3");
+  const resource = createAudioResource("./assets/audio/knock2.mp3");
 
   player.play(resource);
 
