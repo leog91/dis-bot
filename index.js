@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const { voiceFun, playSong } = require("./voice");
 const {
   findUser,
   LEOG,
@@ -13,13 +14,24 @@ const {
 } = require("./data");
 
 const Discord = require("discord.js");
-// const client = new Discord.Client();
-const client = new Discord.Client({ intents: ["GUILDS", "GUILD_MESSAGES"] });
+
+const client = new Discord.Client({
+  intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_VOICE_STATES"],
+});
 
 client.login(process.env.BOT_TOKEN);
-client.on("ready", () => {
-  console.log("The bot is ready");
+
+client.on("ready", async () => {
+  console.log("Discord.js client is ready!");
+
+  try {
+    await playSong();
+    console.log("Song is ready to play!");
+  } catch (error) {
+    console.error(error);
+  }
 });
+
 client.on("message", (msg) => {
   if (msg.content.includes("bot")) {
     // msg.react("❤️");
@@ -71,4 +83,10 @@ client.on("message", (msg) => {
   if (msg.author.id === findUser(EZEQ).id) {
     msg.react("👻");
   }
+
+  client.on("message", async (message) => {
+    if (message.content === "qweasdzxc") {
+      voiceFun(message);
+    }
+  });
 });
