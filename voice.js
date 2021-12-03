@@ -40,7 +40,12 @@ function playSong() {
   // );
 
   //   const resource = createAudioResource("./droplet.mp3");
-  const resource = createAudioResource("./assets/audio/knock2.mp3");
+
+  // const resource = createAudioResource("./assets/audio/knock2.mp3");
+
+  const resource = createAudioResource(
+    "./assets/audio/giraldo+de+ayer-001.mp3"
+  );
 
   player.play(resource);
 

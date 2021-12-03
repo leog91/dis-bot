@@ -107,8 +107,25 @@ client.on("message", (msg) => {
   }
 });
 
+const testFolder = "././assets/images/meme/cat/";
+const fs = require("fs");
+const cat = fs.readdirSync(testFolder);
+
+client.on("message", (msg) => {
+  if (msg.content === "cat") {
+    msg.channel.send({
+      files: [
+        `./assets/images/meme/cat/${
+          cat[Math.floor(Math.random() * cat.length)]
+        }`,
+      ],
+    });
+  }
+});
+
 client.on("message", async (message) => {
-  if (message.content === "qweasdzxc") {
+  // if (message.content === "qweasdzxc") {
+  if (message.content === "incondicional") {
     voiceFun(message);
   }
 });
