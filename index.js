@@ -1,8 +1,18 @@
 require("dotenv").config();
 
-const { voiceFun, playSong } = require("./voice");
+const {
+  voiceFun,
+  playSong,
+  playSongBis,
+  playSongAge,
+  stop,
+  pause,
+  resume,
+} = require("./voice");
 const {
   findUser,
+  isBytes,
+  isTestGuild,
   LEOG,
   GD92,
   MAVE,
@@ -109,6 +119,7 @@ client.on("message", (msg) => {
 
 const testFolder = "././assets/images/meme/cat/";
 const fs = require("fs");
+const { time } = require("console");
 const cat = fs.readdirSync(testFolder);
 
 client.on("message", (msg) => {
@@ -123,20 +134,107 @@ client.on("message", (msg) => {
   }
 });
 
-client.on("message", async (message) => {
-  // if (message.content === "qweasdzxc") {
-  if (message.content === "incondicional") {
-    voiceFun(message);
-  }
-});
+// client.on("message", async (message) => {
+//   // if (message.content === "qweasdzxc") {
+//   if (message.content === "incondicional") {
+//     voiceFun(message);
+//   }
+// });
 
 client.on("ready", async () => {
   console.log("Discord.js client is ready!");
+  // const dateA = new Date();
 
-  try {
-    await playSong();
-    console.log("Song is ready to play!");
-  } catch (error) {
-    console.error(error);
+  // try {
+  //   await playSong();
+  //   const dateB = new Date();
+  //   console.log("milis =>", dateB.getTime() - dateA.getTime());
+  //   console.log("Song is ready to play!");
+  // } catch (error) {
+  //   console.error(error);
+  // }
+});
+
+client.on("message", (message) => {
+  if (message.content === "stop") {
+    stop();
+  }
+});
+
+client.on("message", (message) => {
+  if (message.content === "pause") {
+    pause();
+  }
+});
+client.on("message", (message) => {
+  if (message.content === "resume") {
+    resume();
+  }
+});
+
+client.on("message", async (message) => {
+  if (message.content === "knock") {
+    const dateA = new Date();
+    try {
+      await playSongBis("knock1");
+      const dateB = new Date();
+      console.log("milis =>", dateB.getTime() - dateA.getTime(), "knock1");
+      voiceFun(message);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+});
+
+client.on("message", async (message) => {
+  if (message.content === "puerta") {
+    try {
+      await playSongBis("knock2");
+      voiceFun(message);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+});
+
+client.on("message", async (message) => {
+  if (message.content === "las quiero") {
+    try {
+      await playSongBis("lasquiero");
+      voiceFun(message);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+});
+
+client.on("message", async (message) => {
+  if (message.content === "pain") {
+    try {
+      await playSongAge("lasquiero");
+      voiceFun(message);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+});
+
+client.on("message", async (message) => {
+  if (message.content === "incondicional" && isBytes(message.channelId)) {
+    const dateA = new Date();
+    try {
+      await playSongBis("giraldo+de+ayer-001");
+      const dateB = new Date();
+      console.log(
+        "milis =>",
+        dateB.getTime() - dateA.getTime(),
+        "giraldo+de+ayer-001"
+      );
+      console.log("Song is ready to play!");
+
+      voiceFun(message);
+    } catch (error) {
+      console.error(error);
+    }
   }
 });

@@ -9,8 +9,8 @@ const ANDY = "ANDY";
 
 const guilds = [
   { name: "Wanna", id: "233725944911626240" },
-
   { name: "Bytes", id: "185183293552066560" },
+  { name: "plll", id: "243582757815451649" },
 ];
 
 const users = [
@@ -51,11 +51,17 @@ const users = [
 
 const emoji = ["👻", "🤭", "🍆", "🌭", "☕", "❤️", "🤢"];
 
+const isBytes = (c_id) => guilds.find((g) => g.name === "Bytes").id === c_id;
+
+const isTestGuild = (c_id) => guilds.find((g) => g.name === "plll").id === c_id;
+
 const findUser = (userName) => users.find((u) => u.username === userName);
 
 module.exports = {
   users,
   findUser,
+  isBytes,
+  isTestGuild,
   LEOG,
   GD92,
   MAVE,
