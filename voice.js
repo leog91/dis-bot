@@ -63,7 +63,14 @@ function playSongBis(audio) {
 }
 
 function playSongAge(audio) {
-  const resource = createAudioResource(`./assets/audio/age/soldier_die_17.WAV`);
+  // const resource = createAudioResource(`./assets/audio/age/soldier_die_17.WAV`);
+
+  const ageFolder = "./assets/audio/age/";
+
+  const age = fs.readdirSync(ageFolder);
+  const resource = createAudioResource(
+    `./assets/audio/age/${age[Math.floor(Math.random() * age.length)]}`
+  );
 
   player.play(resource);
 

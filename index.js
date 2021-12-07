@@ -13,6 +13,7 @@ const {
   findUser,
   isBytes,
   isTestGuild,
+  isWanna,
   LEOG,
   GD92,
   MAVE,
@@ -55,11 +56,20 @@ client.on("message", (msg) => {
   if (msg.author.id === findUser(DREVI).id) {
     // msg.reply(`quien so? `);
     msg.react("🤢");
+    return;
   }
 
   if (msg.author.id === findUser(LEOG).id) {
     //   msg.reply(`^_^ ${msg.author.username} `);
     msg.react("❤️");
+    // msg.react(":smile:");
+
+    //custom emoji
+    // const reactionEmoji = msg.guild.emojis.cache.find(
+    //   (emoji) => emoji.name === "dank"
+    // );
+    // msg.react(reactionEmoji);
+
     return;
   }
 
@@ -119,7 +129,7 @@ client.on("message", (msg) => {
 
 const testFolder = "././assets/images/meme/cat/";
 const fs = require("fs");
-const { time } = require("console");
+// const { time } = require("console");
 const cat = fs.readdirSync(testFolder);
 
 client.on("message", (msg) => {
@@ -211,7 +221,7 @@ client.on("message", async (message) => {
 client.on("message", async (message) => {
   if (message.content === "pain") {
     try {
-      await playSongAge("lasquiero");
+      await playSongAge("werwer");
       voiceFun(message);
     } catch (error) {
       console.error(error);
@@ -220,7 +230,7 @@ client.on("message", async (message) => {
 });
 
 client.on("message", async (message) => {
-  if (message.content === "incondicional" && isBytes(message.channelId)) {
+  if (message.content === "incondicional" && isBytes(message.guildId)) {
     const dateA = new Date();
     try {
       await playSongBis("giraldo+de+ayer-001");
@@ -232,6 +242,61 @@ client.on("message", async (message) => {
       );
       console.log("Song is ready to play!");
 
+      voiceFun(message);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+});
+
+client.on("message", async (message) => {
+  if (message.content === "dientes" && isBytes(message.guildId)) {
+    try {
+      await playSongBis("dientes");
+      voiceFun(message);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+});
+
+client.on("message", async (message) => {
+  if (message.content === "BUD" && isBytes(message.guildId)) {
+    try {
+      await playSongBis("BUDWAIZA");
+      voiceFun(message);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+});
+
+client.on("message", async (message) => {
+  if (message.content === "mundo" && isBytes(message.guildId)) {
+    try {
+      await playSongBis("giraldoypabloc");
+      voiceFun(message);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+});
+
+client.on("message", async (message) => {
+  if (message.content === "age123" && isBytes(message.guildId)) {
+    try {
+      await playSongBis("jajajajaja34 age");
+      voiceFun(message);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+});
+
+client.on("message", async (message) => {
+  if (message.content === "peti" && isWanna(message.guildId)) {
+    try {
+      await playSongBis("petifica3");
       voiceFun(message);
     } catch (error) {
       console.error(error);

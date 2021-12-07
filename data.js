@@ -52,6 +52,7 @@ const users = [
 const emoji = ["👻", "🤭", "🍆", "🌭", "☕", "❤️", "🤢"];
 
 const isBytes = (c_id) => guilds.find((g) => g.name === "Bytes").id === c_id;
+const isWanna = (c_id) => guilds.find((g) => g.name === "Wanna").id === c_id;
 
 const isTestGuild = (c_id) => guilds.find((g) => g.name === "plll").id === c_id;
 
@@ -62,6 +63,7 @@ module.exports = {
   findUser,
   isBytes,
   isTestGuild,
+  isWanna,
   LEOG,
   GD92,
   MAVE,
