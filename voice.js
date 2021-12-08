@@ -11,23 +11,9 @@ const {
   VoiceConnectionStatus,
 } = require("@discordjs/voice");
 
+const { randomAsset } = require("./utils");
+
 console.log("++++++++++", generateDependencyReport());
-
-// const song = require("./droplet.mp3");
-// let data = fs.readFile(pth.join(__dirname, "droplet.mp3"));
-// let data = fs.readFileSync(pth.join(__dirname, "droplet.mp3"));
-// console.log(data + "");
-
-// let datas;
-
-// await fs.readFile(pth.join(__dirname, "droplet.mp3"), (err, data) => {
-//   datas = data;
-//   console.log(data + "");
-// });
-
-// console.log(data + "");
-
-// console.log("SOOOONG", song);
 
 function playSong() {
   // const resource = createAudioResource(
@@ -62,20 +48,12 @@ function playSongBis(audio) {
   return entersState(player, AudioPlayerStatus.Playing, 5e3);
 }
 
-function playSongAge(audio) {
-  // const resource = createAudioResource(`./assets/audio/age/soldier_die_17.WAV`);
-
-  const ageFolder = "./assets/audio/age/";
-
-  const age = fs.readdirSync(ageFolder);
-  const resource = createAudioResource(
-    `./assets/audio/age/${age[Math.floor(Math.random() * age.length)]}`
-  );
-
+const playRandom = (command) => {
+  const resource = createAudioResource(randomAsset(command));
   player.play(resource);
 
   return entersState(player, AudioPlayerStatus.Playing, 5e3);
-}
+};
 
 const player = createAudioPlayer();
 
@@ -131,7 +109,7 @@ module.exports = {
   voiceFun,
   playSong,
   playSongBis,
-  playSongAge,
+  playRandom,
   stop,
   pause,
   resume,

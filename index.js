@@ -4,11 +4,14 @@ const {
   voiceFun,
   playSong,
   playSongBis,
-  playSongAge,
+  // playSongAge,
   stop,
   pause,
   resume,
+  playRandom,
 } = require("./voice");
+
+const { sendRandomImg } = require("./utils");
 const {
   findUser,
   isBytes,
@@ -104,18 +107,18 @@ client.on("message", (msg) => {
 });
 
 //remoteIMG
-client.on("message", (msg) => {
-  if (msg.content === "123qwe") {
-    msg.react("🤢");
-    msg.channel
-      .send({
-        files: [
-          "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Pac_Man.svg/1200px-Pac_Man.svg.png",
-        ],
-      })
-      .catch(console.error);
-  }
-});
+// client.on("message", (msg) => {
+//   if (msg.content === "123qwe") {
+//     msg.react("🤢");
+//     msg.channel
+//       .send({
+//         files: [
+//           "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Pac_Man.svg/1200px-Pac_Man.svg.png",
+//         ],
+//       })
+//       .catch(console.error);
+//   }
+// });
 
 //localfile
 client.on("message", (msg) => {
@@ -127,42 +130,14 @@ client.on("message", (msg) => {
   }
 });
 
-const testFolder = "././assets/images/meme/cat/";
-const fs = require("fs");
-// const { time } = require("console");
-const cat = fs.readdirSync(testFolder);
-
 client.on("message", (msg) => {
   if (msg.content === "cat") {
-    msg.channel.send({
-      files: [
-        `./assets/images/meme/cat/${
-          cat[Math.floor(Math.random() * cat.length)]
-        }`,
-      ],
-    });
+    sendRandomImg("cat", msg.channel);
   }
 });
 
-// client.on("message", async (message) => {
-//   // if (message.content === "qweasdzxc") {
-//   if (message.content === "incondicional") {
-//     voiceFun(message);
-//   }
-// });
-
 client.on("ready", async () => {
   console.log("Discord.js client is ready!");
-  // const dateA = new Date();
-
-  // try {
-  //   await playSong();
-  //   const dateB = new Date();
-  //   console.log("milis =>", dateB.getTime() - dateA.getTime());
-  //   console.log("Song is ready to play!");
-  // } catch (error) {
-  //   console.error(error);
-  // }
 });
 
 client.on("message", (message) => {
@@ -221,7 +196,7 @@ client.on("message", async (message) => {
 client.on("message", async (message) => {
   if (message.content === "pain") {
     try {
-      await playSongAge("werwer");
+      await playRandom("age");
       voiceFun(message);
     } catch (error) {
       console.error(error);
