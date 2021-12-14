@@ -4,7 +4,7 @@ const {
   voiceFun,
   playSong,
   playSongBis,
-  // playSongAge,
+
   stop,
   pause,
   resume,
@@ -35,8 +35,33 @@ const client = new Discord.Client({
 
 client.login(process.env.BOT_TOKEN);
 
+let available_bot = true;
+
+let voice_enable = true;
+//text command, voice command
+
 client.on("message", (msg) => {
-  if (msg.content.includes("bot")) {
+  if (msg.content === "_off" && msg.author.id === findUser(LEOG).id) {
+    available_bot = false;
+    msg.reply("off");
+  }
+});
+
+client.on("message", (msg) => {
+  if (msg.content === "_on" && msg.author.id === findUser(LEOG).id) {
+    available_bot = true;
+    msg.reply("on");
+  }
+});
+
+client.on("message", (msg) => {
+  if (msg.content === "_status" && msg.author.id === findUser(LEOG).id) {
+    msg.reply(available_bot ? "on" : "off");
+  }
+});
+
+client.on("message", (msg) => {
+  if (available_bot && msg.content.includes("bot")) {
     // msg.react("❤️");
     // msg.react("🤢");
     // msg.react("🤭");
@@ -55,14 +80,15 @@ client.on("messageDelete", (msg) => {
   msg.channel.send(`${msg.author.username} said ${msg.content}`);
 });
 
+//reactions
 client.on("message", (msg) => {
-  if (msg.author.id === findUser(DREVI).id) {
+  if (available_bot && msg.author.id === findUser(DREVI).id) {
     // msg.reply(`quien so? `);
     msg.react("🤢");
     return;
   }
 
-  if (msg.author.id === findUser(LEOG).id) {
+  if (available_bot && msg.author.id === findUser(LEOG).id) {
     //   msg.reply(`^_^ ${msg.author.username} `);
     msg.react("❤️");
     // msg.react(":smile:");
@@ -76,53 +102,39 @@ client.on("message", (msg) => {
     return;
   }
 
-  if (msg.author.id === findUser(GD92).id) {
+  if (available_bot && msg.author.id === findUser(GD92).id) {
     msg.react("☕");
     return;
   }
-  if (msg.author.id === findUser(MAVE).id) {
+  if (available_bot && msg.author.id === findUser(MAVE).id) {
     msg.react("🌭");
     return;
   }
-  if (msg.author.id === findUser(PABLOC).id) {
+  if (available_bot && msg.author.id === findUser(PABLOC).id) {
     msg.react("🍆");
     return;
   }
-  if (msg.author.id === findUser(ANDY).id) {
+  if (available_bot && msg.author.id === findUser(ANDY).id) {
     msg.react("🦖");
     return;
   }
 
-  if (msg.author.id === findUser(TINCHO).id) {
+  if (available_bot && msg.author.id === findUser(TINCHO).id) {
     msg.react("🤭");
     return;
   }
 
-  if (msg.author.id === findUser(EZEQ).id) {
+  if (available_bot && msg.author.id === findUser(EZEQ).id) {
     msg.react("👻");
     return;
   }
 
-  msg.react("🦖");
+  available_bot && msg.react("🦖");
 });
-
-//remoteIMG
-// client.on("message", (msg) => {
-//   if (msg.content === "123qwe") {
-//     msg.react("🤢");
-//     msg.channel
-//       .send({
-//         files: [
-//           "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Pac_Man.svg/1200px-Pac_Man.svg.png",
-//         ],
-//       })
-//       .catch(console.error);
-//   }
-// });
 
 //localfile
 client.on("message", (msg) => {
-  if (msg.content === "pic") {
+  if (available_bot && msg.content === "pic") {
     // msg.react("🤢");
     msg.channel.send({
       files: ["./assets/images/garolfa-profile.jpg"],
@@ -131,7 +143,7 @@ client.on("message", (msg) => {
 });
 
 client.on("message", (msg) => {
-  if (msg.content === "cat") {
+  if (available_bot && msg.content === "cat") {
     sendRandomImg("cat", msg.channel);
   }
 });
@@ -158,7 +170,7 @@ client.on("message", (message) => {
 });
 
 client.on("message", async (message) => {
-  if (message.content === "knock") {
+  if (available_bot && message.content === "knock") {
     const dateA = new Date();
     try {
       await playSongBis("knock1");
@@ -172,7 +184,7 @@ client.on("message", async (message) => {
 });
 
 client.on("message", async (message) => {
-  if (message.content === "puerta") {
+  if (available_bot && message.content === "puerta") {
     try {
       await playSongBis("knock2");
       voiceFun(message);
@@ -183,7 +195,7 @@ client.on("message", async (message) => {
 });
 
 client.on("message", async (message) => {
-  if (message.content === "las quiero") {
+  if (available_bot && message.content === "las quiero") {
     try {
       await playSongBis("lasquiero");
       voiceFun(message);
@@ -194,7 +206,7 @@ client.on("message", async (message) => {
 });
 
 client.on("message", async (message) => {
-  if (message.content === "pain") {
+  if (available_bot && message.content === "pain") {
     try {
       await playRandom("age");
       voiceFun(message);
@@ -205,7 +217,11 @@ client.on("message", async (message) => {
 });
 
 client.on("message", async (message) => {
-  if (message.content === "incondicional" && isBytes(message.guildId)) {
+  if (
+    available_bot &&
+    message.content === "incondicional" &&
+    isBytes(message.guildId)
+  ) {
     const dateA = new Date();
     try {
       await playSongBis("giraldo+de+ayer-001");
@@ -225,7 +241,11 @@ client.on("message", async (message) => {
 });
 
 client.on("message", async (message) => {
-  if (message.content === "dientes" && isBytes(message.guildId)) {
+  if (
+    available_bot &&
+    message.content === "dientes" &&
+    isBytes(message.guildId)
+  ) {
     try {
       await playSongBis("dientes");
       voiceFun(message);
@@ -236,7 +256,7 @@ client.on("message", async (message) => {
 });
 
 client.on("message", async (message) => {
-  if (message.content === "BUD" && isBytes(message.guildId)) {
+  if (available_bot && message.content === "BUD" && isBytes(message.guildId)) {
     try {
       await playSongBis("BUDWAIZA");
       voiceFun(message);
@@ -247,7 +267,11 @@ client.on("message", async (message) => {
 });
 
 client.on("message", async (message) => {
-  if (message.content === "mundo" && isBytes(message.guildId)) {
+  if (
+    available_bot &&
+    message.content === "mundo" &&
+    isBytes(message.guildId)
+  ) {
     try {
       await playSongBis("giraldoypabloc");
       voiceFun(message);
@@ -258,7 +282,11 @@ client.on("message", async (message) => {
 });
 
 client.on("message", async (message) => {
-  if (message.content === "age123" && isBytes(message.guildId)) {
+  if (
+    available_bot &&
+    message.content === "age123" &&
+    isBytes(message.guildId)
+  ) {
     try {
       await playSongBis("jajajajaja34 age");
       voiceFun(message);
@@ -269,7 +297,7 @@ client.on("message", async (message) => {
 });
 
 client.on("message", async (message) => {
-  if (message.content === "peti" && isWanna(message.guildId)) {
+  if (available_bot && message.content === "peti" && isWanna(message.guildId)) {
     try {
       await playSongBis("petifica3");
       voiceFun(message);

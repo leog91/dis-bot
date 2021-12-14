@@ -7,6 +7,11 @@ const MAVE = "MAVE";
 const PABLOC = "PABLOC";
 const ANDY = "ANDY";
 
+const CONSTANTS = {};
+
+const AUDIO = "AUDIO";
+const TEXT = "TEXT";
+
 const guilds = [
   { name: "Wanna", id: "233725944911626240" },
   { name: "Bytes", id: "185183293552066560" },
@@ -49,7 +54,15 @@ const users = [
   },
 ];
 
+const COMMANDS = {
+  PAIN: { name: "pain", type: AUDIO, description: "" },
+  PIC: { name: "pic", type: TEXT, description: "" },
+};
+
 const emoji = ["👻", "🤭", "🍆", "🌭", "☕", "❤️", "🤢"];
+
+//TO-DO
+const pickEmoji = () => {};
 
 const isBytes = (c_id) => guilds.find((g) => g.name === "Bytes").id === c_id;
 const isWanna = (c_id) => guilds.find((g) => g.name === "Wanna").id === c_id;
