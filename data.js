@@ -1,11 +1,11 @@
-const LEOG = "leog";
-const DREVI = "drevi";
-const TINCHO = "tincho";
-const EZEQ = "ezeq";
-const GD92 = "GD92";
-const MAVE = "MAVE";
-const PABLOC = "PABLOC";
-const ANDY = "ANDY";
+export const LEOG = "leog";
+export const DREVI = "drevi";
+export const TINCHO = "tincho";
+export const EZEQ = "ezeq";
+export const GD92 = "GD92";
+export const MAVE = "MAVE";
+export const PABLOC = "PABLOC";
+export const ANDY = "ANDY";
 
 const CONSTANTS = {};
 
@@ -54,7 +54,14 @@ const users = [
   },
 ];
 
-const COMMANDS = {
+//users
+const U_ = {
+  LEOG: { id: "sarasa", nick: "leog" },
+  GAROLFA: { id: "idSarasa", nick: "garolfa" },
+};
+
+//commands
+const C_ = {
   PAIN: { name: "pain", type: AUDIO, description: "" },
   PIC: { name: "pic", type: TEXT, description: "" },
 };
@@ -64,25 +71,13 @@ const emoji = ["👻", "🤭", "🍆", "🌭", "☕", "❤️", "🤢"];
 //TO-DO
 const pickEmoji = () => {};
 
-const isBytes = (c_id) => guilds.find((g) => g.name === "Bytes").id === c_id;
-const isWanna = (c_id) => guilds.find((g) => g.name === "Wanna").id === c_id;
+export const isBytes = (c_id) =>
+  guilds.find((g) => g.name === "Bytes").id === c_id;
+export const isWanna = (c_id) =>
+  guilds.find((g) => g.name === "Wanna").id === c_id;
 
-const isTestGuild = (c_id) => guilds.find((g) => g.name === "plll").id === c_id;
+export const isTestGuild = (c_id) =>
+  guilds.find((g) => g.name === "plll").id === c_id;
 
-const findUser = (userName) => users.find((u) => u.username === userName);
-
-module.exports = {
-  users,
-  findUser,
-  isBytes,
-  isTestGuild,
-  isWanna,
-  LEOG,
-  GD92,
-  MAVE,
-  PABLOC,
-  ANDY,
-  DREVI,
-  TINCHO,
-  EZEQ,
-};
+export const findUser = (userName) =>
+  users.find((u) => u.username === userName);

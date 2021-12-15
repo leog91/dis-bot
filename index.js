@@ -1,18 +1,37 @@
-require("dotenv").config();
+import { join, dirname } from "path";
+import { Low, JSONFile } from "lowdb";
+import { fileURLToPath } from "url";
 
-const {
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Use JSON file for storage
+const file = join(__dirname, "db.json");
+const adapter = new JSONFile(file);
+const db = new Low(adapter);
+
+// Read data from JSON file, this will set db.data content
+await db.read();
+
+// If file.json doesn't exist, db.data will be null
+// Set default data
+// db.data = db.data || { posts: [] } // Node < v15.x
+db.data ||= { posts: [] }; // Node >= 15.x
+
+import dotenv from "dotenv";
+dotenv.config();
+
+import {
   voiceFun,
   playSong,
   playSongBis,
-
   stop,
   pause,
   resume,
   playRandom,
-} = require("./voice");
+} from "./voice.js";
 
-const { sendRandomImg } = require("./utils");
-const {
+import { sendRandomImg } from "./utils.js";
+import {
   findUser,
   isBytes,
   isTestGuild,
@@ -25,9 +44,9 @@ const {
   EZEQ,
   PABLOC,
   ANDY,
-} = require("./data");
+} from "./data.js";
 
-const Discord = require("discord.js");
+import Discord from "discord.js";
 
 const client = new Discord.Client({
   intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_VOICE_STATES"],
@@ -59,6 +78,8 @@ client.on("message", (msg) => {
     msg.reply(available_bot ? "on" : "off");
   }
 });
+
+//unify clients on event
 
 client.on("message", (msg) => {
   if (available_bot && msg.content.includes("bot")) {
@@ -206,13 +227,29 @@ client.on("message", async (message) => {
 });
 
 client.on("message", async (message) => {
+  if (available_bot && message.content === "stats") {
+    db.data.pain[message.author.username] &&
+      message.reply(String(db.data.pain[message.author.username]));
+  }
+});
+
+client.on("message", async (message) => {
   if (available_bot && message.content === "pain") {
+    db.data.pain[message.author.username]
+      ? (db.data.pain[message.author.username] =
+          db.data.pain[message.author.username] + 1)
+      : (db.data.pain[message.author.username] = 1);
+
+    // await db.read();
+    // db.data.pain = db.data.pain + 1;
+
     try {
       await playRandom("age");
       voiceFun(message);
     } catch (error) {
       console.error(error);
     }
+    db.write();
   }
 });
 

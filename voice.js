@@ -1,6 +1,4 @@
-const fs = require("fs");
-const pth = require("path");
-const {
+import {
   joinVoiceChannel,
   createAudioPlayer,
   createAudioResource,
@@ -9,13 +7,13 @@ const {
   StreamType,
   AudioPlayerStatus,
   VoiceConnectionStatus,
-} = require("@discordjs/voice");
+} from "@discordjs/voice";
 
-const { randomAsset } = require("./utils");
+import { randomAsset } from "./utils.js";
 
 console.log("++++++++++", generateDependencyReport());
 
-function playSong() {
+export function playSong() {
   // const resource = createAudioResource(
   //   "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
   //   // data,
@@ -40,7 +38,7 @@ function playSong() {
   return entersState(player, AudioPlayerStatus.Playing, 5e3);
 }
 
-function playSongBis(audio) {
+export function playSongBis(audio) {
   const resource = createAudioResource(`./assets/audio/${audio}.mp3`);
 
   player.play(resource);
@@ -48,7 +46,7 @@ function playSongBis(audio) {
   return entersState(player, AudioPlayerStatus.Playing, 5e3);
 }
 
-const playRandom = (command) => {
+export const playRandom = (command) => {
   const resource = createAudioResource(randomAsset(command));
   player.play(resource);
 
@@ -57,9 +55,9 @@ const playRandom = (command) => {
 
 const player = createAudioPlayer();
 
-const stop = () => player.stop();
-const pause = () => player.pause();
-const resume = () => player.unpause();
+export const stop = () => player.stop();
+export const pause = () => player.pause();
+export const resume = () => player.unpause();
 
 async function connectToChannel(channel, adapter) {
   const connection = joinVoiceChannel({
@@ -77,7 +75,7 @@ async function connectToChannel(channel, adapter) {
   }
 }
 
-const voiceFun = async (message) => {
+export const voiceFun = async (message) => {
   const channel = message.member?.voice.channel;
   // console.log("1111");
   if (channel) {
@@ -103,14 +101,4 @@ const voiceFun = async (message) => {
   } else {
     message.reply("Join a voice channel then try again!");
   }
-};
-
-module.exports = {
-  voiceFun,
-  playSong,
-  playSongBis,
-  playRandom,
-  stop,
-  pause,
-  resume,
 };

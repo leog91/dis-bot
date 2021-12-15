@@ -1,6 +1,6 @@
-const fs = require("fs");
+import fs from "fs";
 
-const sendRandomImg = (command, channel) => {
+export const sendRandomImg = (command, channel) => {
   const assets = fs.readdirSync(folderPaths[command]);
   channel.send({
     files: [
@@ -9,7 +9,7 @@ const sendRandomImg = (command, channel) => {
   });
 };
 
-const randomAsset = (command) => {
+export const randomAsset = (command) => {
   const assets = fs.readdirSync(folderPaths[command]);
   return (
     folderPaths[command] + assets[Math.floor(Math.random() * assets.length)]
@@ -22,8 +22,3 @@ const folderPaths = {
 };
 
 console.log("folderPaths", folderPaths["age"]);
-
-module.exports = {
-  sendRandomImg,
-  randomAsset,
-};
