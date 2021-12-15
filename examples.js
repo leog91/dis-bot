@@ -11,3 +11,11 @@
 //       .catch(console.error);
 //   }
 // });
+
+// msg.react(":smile:");
+
+//custom emoji
+// const reactionEmoji = msg.guild.emojis.cache.find(
+//   (emoji) => emoji.name === "dank"
+// );
+// msg.react(reactionEmoji);

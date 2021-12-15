@@ -59,67 +59,174 @@ let available_bot = true;
 let voice_enable = true;
 //text command, voice command
 
-client.on("message", (msg) => {
-  if (msg.content === "_off" && msg.author.id === findUser(LEOG).id) {
-    available_bot = false;
-    msg.reply("off");
-  }
-});
+//available bot check
 
-client.on("message", (msg) => {
+client.on("message", async (msg) => {
+  if (msg.content === "stop") {
+    stop();
+  }
+  if (msg.content === "pause") {
+    pause();
+  }
+  if (msg.content === "resume") {
+    resume();
+  }
+  if (msg.content === "_status") {
+    if (msg.author.id === findUser(LEOG).id) {
+      msg.reply(available_bot ? "on" : "off");
+      msg.react("✅");
+    } else {
+      msg.react("❌");
+    }
+    return;
+  }
   if (msg.content === "_on" && msg.author.id === findUser(LEOG).id) {
     available_bot = true;
     msg.reply("on");
   }
-});
-
-client.on("message", (msg) => {
-  if (msg.content === "_status" && msg.author.id === findUser(LEOG).id) {
-    msg.reply(available_bot ? "on" : "off");
+  if (msg.content === "_off" && msg.author.id === findUser(LEOG).id) {
+    available_bot = false;
+    msg.reply("off");
   }
-});
-
-//unify clients on event
-
-client.on("message", (msg) => {
   if (available_bot && msg.content.includes("bot")) {
-    // msg.react("❤️");
-    // msg.react("🤢");
-    // msg.react("🤭");
-    // msg.react("👻");
-
     msg.reply("BUEN DIA GRUPO");
   }
-});
-//
 
-//
+  if (available_bot && msg.content === "knock") {
+    const dateA = new Date();
+    try {
+      await playSongBis("knock1");
+      const dateB = new Date();
+      console.log("milis =>", dateB.getTime() - dateA.getTime(), "knock1");
+      voiceFun(msg);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  if (available_bot && msg.content === "puerta") {
+    console.log("puertaaa");
+    try {
+      await playSongBis("knock2");
+      voiceFun(msg);
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
-client.on("messageDelete", (msg) => {
-  msg.channel.send("Qué borra gato");
+  if (available_bot && msg.content === "pic") {
+    msg.channel.send({
+      files: ["./assets/images/garolfa-profile.jpg"],
+    });
+  }
 
-  msg.channel.send(`${msg.author.username} said ${msg.content}`);
-});
+  if (available_bot && msg.content === "cat") {
+    sendRandomImg("cat", msg.channel);
+  }
 
-//reactions
-client.on("message", (msg) => {
+  if (available_bot && msg.content === "las quiero") {
+    try {
+      await playSongBis("lasquiero");
+      voiceFun(msg);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  if (available_bot && msg.content === "stats") {
+    db.data.pain[msg.author.username] &&
+      msg.reply(String(db.data.pain[msg.author.username]));
+  }
+
+  if (available_bot && msg.content === "pain") {
+    db.data.pain[msg.author.username]
+      ? (db.data.pain[msg.author.username] =
+          db.data.pain[msg.author.username] + 1)
+      : (db.data.pain[msg.author.username] = 1);
+
+    try {
+      await playRandom("age");
+      voiceFun(msg);
+    } catch (error) {
+      console.error(error);
+    }
+    db.write();
+  }
+
+  if (
+    available_bot &&
+    msg.content === "incondicional" &&
+    isBytes(msg.guildId)
+  ) {
+    const dateA = new Date();
+    try {
+      await playSongBis("giraldo+de+ayer-001");
+      const dateB = new Date();
+      console.log(
+        "milis =>",
+        dateB.getTime() - dateA.getTime(),
+        "giraldo+de+ayer-001"
+      );
+      console.log("Song is ready to play!");
+
+      voiceFun(msg);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  if (available_bot && msg.content === "dientes" && isBytes(msg.guildId)) {
+    try {
+      await playSongBis("dientes");
+      voiceFun(msg);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  if (available_bot && msg.content === "BUD" && isBytes(msg.guildId)) {
+    try {
+      await playSongBis("BUDWAIZA");
+      voiceFun(msg);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  if (available_bot && msg.content === "mundo" && isBytes(msg.guildId)) {
+    try {
+      await playSongBis("giraldoypabloc");
+      voiceFun(msg);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  if (available_bot && msg.content === "age123" && isBytes(msg.guildId)) {
+    try {
+      await playSongBis("jajajajaja34 age");
+      voiceFun(msg);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  if (available_bot && msg.content === "peti" && isWanna(msg.guildId)) {
+    try {
+      await playSongBis("petifica3");
+      voiceFun(msg);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  //reaction
+
   if (available_bot && msg.author.id === findUser(DREVI).id) {
-    // msg.reply(`quien so? `);
     msg.react("🤢");
     return;
   }
 
   if (available_bot && msg.author.id === findUser(LEOG).id) {
-    //   msg.reply(`^_^ ${msg.author.username} `);
     msg.react("❤️");
-    // msg.react(":smile:");
-
-    //custom emoji
-    // const reactionEmoji = msg.guild.emojis.cache.find(
-    //   (emoji) => emoji.name === "dank"
-    // );
-    // msg.react(reactionEmoji);
-
     return;
   }
 
@@ -153,193 +260,12 @@ client.on("message", (msg) => {
   available_bot && msg.react("🦖");
 });
 
-//localfile
-client.on("message", (msg) => {
-  if (available_bot && msg.content === "pic") {
-    // msg.react("🤢");
-    msg.channel.send({
-      files: ["./assets/images/garolfa-profile.jpg"],
-    });
-  }
-});
+client.on("messageDelete", (msg) => {
+  msg.channel.send("Qué borra gato");
 
-client.on("message", (msg) => {
-  if (available_bot && msg.content === "cat") {
-    sendRandomImg("cat", msg.channel);
-  }
+  msg.channel.send(`${msg.author.username} said ${msg.content}`);
 });
 
 client.on("ready", async () => {
   console.log("Discord.js client is ready!");
-});
-
-client.on("message", (message) => {
-  if (message.content === "stop") {
-    stop();
-  }
-});
-
-client.on("message", (message) => {
-  if (message.content === "pause") {
-    pause();
-  }
-});
-client.on("message", (message) => {
-  if (message.content === "resume") {
-    resume();
-  }
-});
-
-client.on("message", async (message) => {
-  if (available_bot && message.content === "knock") {
-    const dateA = new Date();
-    try {
-      await playSongBis("knock1");
-      const dateB = new Date();
-      console.log("milis =>", dateB.getTime() - dateA.getTime(), "knock1");
-      voiceFun(message);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-});
-
-client.on("message", async (message) => {
-  if (available_bot && message.content === "puerta") {
-    try {
-      await playSongBis("knock2");
-      voiceFun(message);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-});
-
-client.on("message", async (message) => {
-  if (available_bot && message.content === "las quiero") {
-    try {
-      await playSongBis("lasquiero");
-      voiceFun(message);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-});
-
-client.on("message", async (message) => {
-  if (available_bot && message.content === "stats") {
-    db.data.pain[message.author.username] &&
-      message.reply(String(db.data.pain[message.author.username]));
-  }
-});
-
-client.on("message", async (message) => {
-  if (available_bot && message.content === "pain") {
-    db.data.pain[message.author.username]
-      ? (db.data.pain[message.author.username] =
-          db.data.pain[message.author.username] + 1)
-      : (db.data.pain[message.author.username] = 1);
-
-    // await db.read();
-    // db.data.pain = db.data.pain + 1;
-
-    try {
-      await playRandom("age");
-      voiceFun(message);
-    } catch (error) {
-      console.error(error);
-    }
-    db.write();
-  }
-});
-
-client.on("message", async (message) => {
-  if (
-    available_bot &&
-    message.content === "incondicional" &&
-    isBytes(message.guildId)
-  ) {
-    const dateA = new Date();
-    try {
-      await playSongBis("giraldo+de+ayer-001");
-      const dateB = new Date();
-      console.log(
-        "milis =>",
-        dateB.getTime() - dateA.getTime(),
-        "giraldo+de+ayer-001"
-      );
-      console.log("Song is ready to play!");
-
-      voiceFun(message);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-});
-
-client.on("message", async (message) => {
-  if (
-    available_bot &&
-    message.content === "dientes" &&
-    isBytes(message.guildId)
-  ) {
-    try {
-      await playSongBis("dientes");
-      voiceFun(message);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-});
-
-client.on("message", async (message) => {
-  if (available_bot && message.content === "BUD" && isBytes(message.guildId)) {
-    try {
-      await playSongBis("BUDWAIZA");
-      voiceFun(message);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-});
-
-client.on("message", async (message) => {
-  if (
-    available_bot &&
-    message.content === "mundo" &&
-    isBytes(message.guildId)
-  ) {
-    try {
-      await playSongBis("giraldoypabloc");
-      voiceFun(message);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-});
-
-client.on("message", async (message) => {
-  if (
-    available_bot &&
-    message.content === "age123" &&
-    isBytes(message.guildId)
-  ) {
-    try {
-      await playSongBis("jajajajaja34 age");
-      voiceFun(message);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-});
-
-client.on("message", async (message) => {
-  if (available_bot && message.content === "peti" && isWanna(message.guildId)) {
-    try {
-      await playSongBis("petifica3");
-      voiceFun(message);
-    } catch (error) {
-      console.error(error);
-    }
-  }
 });
