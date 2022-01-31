@@ -18,6 +18,12 @@ const guilds = [
   { name: "plll", id: "243582757815451649" },
 ];
 
+const G_ = {
+  Wanna: { id: "233725944911626240" },
+  Bytes: { id: "185183293552066560" },
+  Test: { id: "243582757815451649" },
+};
+
 const users = [
   {
     username: LEOG,
@@ -55,16 +61,128 @@ const users = [
 ];
 
 //users
-const U_ = {
-  LEOG: { id: "sarasa", nick: "leog" },
+export const U_ = {
+  LEOG: { id: "158794899083231232", nick: "leog" },
   GAROLFA: { id: "idSarasa", nick: "garolfa" },
 };
 
 //commands
-const C_ = {
+//test permission
+export const C_ = {
   PAIN: { name: "pain", type: AUDIO, description: "" },
   PIC: { name: "pic", type: TEXT, description: "" },
+  BUD: { name: "bud", type: AUDIO, description: "", permission: [G_.Bytes] },
+  CAT: { name: "cat", type: TEXT, description: "" },
+  LAS_QUIERO: { name: "las quiero", type: AUDIO, description: "" },
+  STATS: { name: "stats", type: TEXT, description: "" },
+  STOP: { name: "stop", type: AUDIO, description: "" },
+  PAUSE: { name: "pause", type: AUDIO, description: "" },
+  RESUME: { name: "resume", type: AUDIO, description: "" },
+  STATUS: {
+    name: "_status",
+    type: TEXT,
+    description: "",
+    permission: [U_.LEOG],
+  },
+  ON: {
+    name: "_on",
+    type: TEXT,
+    description: "",
+    permission: [U_.LEOG],
+  },
+  OFF: {
+    name: "_off",
+    type: TEXT,
+    description: "",
+    permission: [U_.LEOG],
+  },
+  BOT: { name: "bot", type: TEXT, description: "" },
+  KNOCK: { name: "knock", type: AUDIO, description: "" },
+  PUERTA: { name: "puerta", type: AUDIO, description: "" },
+  INCONDICIONAL: {
+    name: "incondicional",
+    type: AUDIO,
+    description: "",
+    permission: [G_.Bytes],
+  },
+  PETI: {
+    name: "peti",
+    type: AUDIO,
+    description: "",
+    permission: [G_.Wanna, G_.Test],
+  },
+  MUNDO: {
+    name: "mundo",
+    type: AUDIO,
+    description: "",
+    permission: [G_.Bytes],
+  },
+  DIENTES: {
+    name: "dientes",
+    type: AUDIO,
+    description: "",
+    permission: [G_.Bytes],
+  },
+
+  AGE123: {
+    name: "age123",
+    type: AUDIO,
+    description: "",
+    permission: [G_.Bytes],
+  },
+  AIUDA: {
+    name: "aiuda",
+    type: TEXT,
+    description: "",
+  },
 };
+
+// console.log(Object.keys(C_));
+
+// console.log(Object.keys(C_).map((k) => C_[k].name));
+
+/*
+const commands = Object.entries(Object.entries(C_).map((c) => c[1]))
+  .map((q) => q[1])
+  .filter((x) => x.permission === undefined)
+  .map((c) => c.name);
+
+console.log("comandss =>", [
+  ...commands,
+  ...Object.entries(Object.entries(C_).map((c) => c[1]))
+    .map((q) => q[1])
+    .filter(
+      // (x) => x.permission && x.permission.find((g) => g.id === msg.guildId)
+      (x) => x.permission && x.permission.find((g) => g.id === G_.Wanna.id)
+    )
+    .map((c) => c.name),
+]);
+*/
+
+/*  
+console.log(
+  
+  Object.entries(Object.entries(C_).map((c) => c[1]))
+    .map((q) => q[1])
+    .filter((x) => x.permission === undefined)
+    .map((c) => c.name)
+);
+
+console.log(
+  Object.entries(Object.entries(C_).map((c) => c[1]))
+    .map((q) => q[1])
+    .filter(
+      // (x) => x.permission && x.permission.find((g) => g.id === msg.guildId)
+      (x) => x.permission && x.permission.find((g) => g.id === G_.Wanna.id)
+    )
+    .map((c) => c.name)
+);
+
+console.log(Object.entries(C_).filter((c) => c.name === "age123"));
+
+*/
+
+// Object.keys
 
 const emoji = ["👻", "🤭", "🍆", "🌭", "☕", "❤️", "🤢"];
 

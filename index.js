@@ -32,6 +32,8 @@ import {
 
 import { sendRandomImg } from "./utils.js";
 import {
+  C_,
+  U_,
   findUser,
   isBytes,
   isTestGuild,
@@ -52,7 +54,9 @@ const client = new Discord.Client({
   intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_VOICE_STATES"],
 });
 
-client.login(process.env.BOT_TOKEN);
+await client.login(process.env.BOT_TOKEN);
+
+client.user.setActivity("commands >> 'aiuda'");
 
 let available_bot = true;
 
@@ -61,18 +65,25 @@ let voice_enable = true;
 
 //available bot check
 
+// C_[`${msg.content}`]
+
+// C_[msg.content] ;
+// true && C_[msg.content]
+
+// permission ( C_[`content`].permission.find((g) => g.id === msg.guildId) )
+
 client.on("message", async (msg) => {
-  if (msg.content === "stop") {
+  if (msg.content === C_.STOP.name) {
     stop();
   }
-  if (msg.content === "pause") {
+  if (msg.content === C_.PAUSE.name) {
     pause();
   }
-  if (msg.content === "resume") {
+  if (msg.content === C_.RESUME.name) {
     resume();
   }
-  if (msg.content === "_status") {
-    if (msg.author.id === findUser(LEOG).id) {
+  if (msg.content === C_.STATUS.name) {
+    if (C_.STATUS.permission.find((u) => u.id === msg.author.id)) {
       msg.reply(available_bot ? "on" : "off");
       msg.react("✅");
     } else {
@@ -80,19 +91,48 @@ client.on("message", async (msg) => {
     }
     return;
   }
-  if (msg.content === "_on" && msg.author.id === findUser(LEOG).id) {
+  if (
+    msg.content === C_.ON.name &&
+    C_.STATUS.permission.find((u) => u.id === msg.author.id)
+  ) {
     available_bot = true;
     msg.reply("on");
   }
-  if (msg.content === "_off" && msg.author.id === findUser(LEOG).id) {
+  if (
+    msg.content === C_.OFF.name &&
+    C_.STATUS.permission.find((u) => u.id === msg.author.id)
+  ) {
     available_bot = false;
     msg.reply("off");
   }
-  if (available_bot && msg.content.includes("bot")) {
+  if (available_bot && msg.content.includes(C_.BOT.name) && !msg.author.bot) {
     msg.reply("BUEN DIA GRUPO");
   }
 
-  if (available_bot && msg.content === "knock") {
+  if (available_bot && msg.content === C_.AIUDA.name) {
+    // msg.reply("work in progress");
+
+    let commands = Object.entries(Object.entries(C_).map((c) => c[1]))
+      .map((q) => q[1])
+      .filter((x) => x.permission === undefined)
+      .map((c) => c.name);
+
+    commands = [
+      ...commands,
+      ...Object.entries(Object.entries(C_).map((c) => c[1]))
+        .map((q) => q[1])
+        .filter(
+          (x) => x.permission && x.permission.find((g) => g.id === msg.guildId)
+        )
+        .map((c) => c.name),
+    ].toString();
+
+    // console.log("===>", commands.split(","));
+
+    msg.reply(commands);
+  }
+
+  if (available_bot && msg.content === C_.KNOCK.name) {
     const dateA = new Date();
     try {
       await playSongBis("knock1");
@@ -103,7 +143,7 @@ client.on("message", async (msg) => {
       console.error(error);
     }
   }
-  if (available_bot && msg.content === "puerta") {
+  if (available_bot && msg.content === C_.PUERTA.name) {
     console.log("puertaaa");
     try {
       await playSongBis("knock2");
@@ -113,17 +153,17 @@ client.on("message", async (msg) => {
     }
   }
 
-  if (available_bot && msg.content === "pic") {
+  if (available_bot && msg.content === C_.PIC.name) {
     msg.channel.send({
       files: ["./assets/images/garolfa-profile.jpg"],
     });
   }
 
-  if (available_bot && msg.content === "cat") {
+  if (available_bot && msg.content === C_.CAT.name) {
     sendRandomImg("cat", msg.channel);
   }
 
-  if (available_bot && msg.content === "las quiero") {
+  if (available_bot && msg.content === C_.LAS_QUIERO.name) {
     try {
       await playSongBis("lasquiero");
       voiceFun(msg);
@@ -132,12 +172,12 @@ client.on("message", async (msg) => {
     }
   }
 
-  if (available_bot && msg.content === "stats") {
+  if (available_bot && msg.content === C_.STATS.name) {
     db.data.pain[msg.author.username] &&
       msg.reply(String(db.data.pain[msg.author.username]));
   }
 
-  if (available_bot && msg.content === "pain") {
+  if (available_bot && msg.content === C_.PAIN.name) {
     db.data.pain[msg.author.username]
       ? (db.data.pain[msg.author.username] =
           db.data.pain[msg.author.username] + 1)
@@ -154,8 +194,8 @@ client.on("message", async (msg) => {
 
   if (
     available_bot &&
-    msg.content === "incondicional" &&
-    isBytes(msg.guildId)
+    msg.content === C_.INCONDICIONAL.name &&
+    C_.INCONDICIONAL.permission.find((g) => g.id === msg.guildId)
   ) {
     const dateA = new Date();
     try {
@@ -174,7 +214,11 @@ client.on("message", async (msg) => {
     }
   }
 
-  if (available_bot && msg.content === "dientes" && isBytes(msg.guildId)) {
+  if (
+    available_bot &&
+    msg.content === C_.DIENTES.name &&
+    C_.DIENTES.permission.find((g) => g.id === msg.guildId)
+  ) {
     try {
       await playSongBis("dientes");
       voiceFun(msg);
@@ -183,8 +227,13 @@ client.on("message", async (msg) => {
     }
   }
 
-  if (available_bot && msg.content === "BUD" && isBytes(msg.guildId)) {
+  if (
+    available_bot &&
+    msg.content === C_.BUD.name &&
+    C_.BUD.permission.find((g) => g.id === msg.guildId)
+  ) {
     try {
+      console.log("BUDDD");
       await playSongBis("BUDWAIZA");
       voiceFun(msg);
     } catch (error) {
@@ -192,7 +241,11 @@ client.on("message", async (msg) => {
     }
   }
 
-  if (available_bot && msg.content === "mundo" && isBytes(msg.guildId)) {
+  if (
+    available_bot &&
+    msg.content === C_.MUNDO.name &&
+    C_.MUNDO.permission.find((g) => g.id === msg.guildId)
+  ) {
     try {
       await playSongBis("giraldoypabloc");
       voiceFun(msg);
@@ -201,7 +254,11 @@ client.on("message", async (msg) => {
     }
   }
 
-  if (available_bot && msg.content === "age123" && isBytes(msg.guildId)) {
+  if (
+    available_bot &&
+    msg.content === C_.AGE123.name &&
+    C_.AGE123.permission.find((g) => g.id === msg.guildId)
+  ) {
     try {
       await playSongBis("jajajajaja34 age");
       voiceFun(msg);
@@ -210,7 +267,11 @@ client.on("message", async (msg) => {
     }
   }
 
-  if (available_bot && msg.content === "peti" && isWanna(msg.guildId)) {
+  if (
+    available_bot &&
+    msg.content === C_.PETI.name &&
+    C_.PETI.permission.find((g) => g.id === msg.guildId)
+  ) {
     try {
       await playSongBis("petifica3");
       voiceFun(msg);
