@@ -1,21 +1,29 @@
 import { join, dirname } from "path";
-import { Low, JSONFile } from "lowdb";
+// import { Low, JSONFile } from "lowdb";
 import { fileURLToPath } from "url";
+import { scrapper } from "./utils/scrapper.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// const sneaker = (data) =>
+//   `product:${data.freeProduct[0].productName} + code:${data.code} + page:${data.page} url:${data.url}`;
+
+const sneaker = (data) =>
+  `product:${data.fullProduct.productName} \n code:${data.code}  \n url >>> ${data.url}`;
+// + page:${data.page}
+
 // Use JSON file for storage
-const file = join(__dirname, "db.json");
-const adapter = new JSONFile(file);
-const db = new Low(adapter);
+// const file = join(__dirname, "db.json");
+// const adapter = new JSONFile(file);
+// const db = new Low(adapter);
 
 // Read data from JSON file, this will set db.data content
-await db.read();
+// await db.read();
 
 // If file.json doesn't exist, db.data will be null
 // Set default data
 // db.data = db.data || { posts: [] } // Node < v15.x
-db.data ||= { posts: [] }; // Node >= 15.x
+// db.data ||= { posts: [] }; // Node >= 15.x
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -48,10 +56,19 @@ import {
   ANDY,
 } from "./data.js";
 
-import Discord from "discord.js";
+import Discord, { GatewayIntentBits } from "discord.js";
 
 const client = new Discord.Client({
-  intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_VOICE_STATES"],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates,
+    //   "GUILDS",
+    //   "GUILD_MESSAGES",
+    //   "GUILD_VOICE_STATES",
+    // "MESSAGE_CONTENT",
+  ],
 });
 
 await client.login(process.env.BOT_TOKEN);
@@ -72,7 +89,12 @@ let voice_enable = true;
 
 // permission ( C_[`content`].permission.find((g) => g.id === msg.guildId) )
 
-client.on("message", async (msg) => {
+//if is command, db.save (command, valid?,times)
+//db.save .. sv_Id,
+
+// client.guilds.cache.size
+
+client.on("messageCreate", async (msg) => {
   if (msg.content === C_.STOP.name) {
     stop();
   }
@@ -173,23 +195,22 @@ client.on("message", async (msg) => {
   }
 
   if (available_bot && msg.content === C_.STATS.name) {
-    db.data.pain[msg.author.username] &&
-      msg.reply(String(db.data.pain[msg.author.username]));
+    // db.data.pain[msg.author.username] &&
+    // msg.reply(String(db.data.pain[msg.author.username]));
   }
 
   if (available_bot && msg.content === C_.PAIN.name) {
-    db.data.pain[msg.author.username]
-      ? (db.data.pain[msg.author.username] =
-          db.data.pain[msg.author.username] + 1)
-      : (db.data.pain[msg.author.username] = 1);
-
+    // db.data.pain[msg.author.username]
+    //   ? (db.data.pain[msg.author.username] =
+    //       db.data.pain[msg.author.username] + 1)
+    //   : (db.data.pain[msg.author.username] = 1);
     try {
       await playRandom("age");
       voiceFun(msg);
     } catch (error) {
       console.error(error);
     }
-    db.write();
+    // db.write();
   }
 
   if (
@@ -286,13 +307,41 @@ client.on("message", async (msg) => {
     return;
   }
 
+  if (
+    available_bot &&
+    msg.author.id === findUser(LEOG).id &&
+    msg.content === "scan1"
+  ) {
+    msg.react("🍆");
+
+    const data = await scrapper();
+
+    msg.author.send("scaned :" + data.scaned.toString());
+    data.products.forEach((d) => msg.author.send(sneaker(d)));
+
+    return;
+  }
+
   if (available_bot && msg.author.id === findUser(LEOG).id) {
     msg.react("❤️");
+
+    // const data = await scrapper();
+
+    // msg.author.send("scaned :" + data.scaned.toString());
+    // data.products.forEach((d) => msg.author.send(sneaker(d)));
+
+    console.log("msg.content", msg);
+
     return;
   }
 
   if (available_bot && msg.author.id === findUser(GD92).id) {
     msg.react("☕");
+    // const data = await scrapper();
+
+    // msg.author.send("scaned :" + data.scaned.toString());
+    // data.products.forEach((d) => msg.author.send(sneaker(d)));
+
     return;
   }
   if (available_bot && msg.author.id === findUser(MAVE).id) {
