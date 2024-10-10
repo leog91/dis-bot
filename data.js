@@ -69,6 +69,7 @@ export const U_ = {
 //commands
 //test permission
 export const C_ = {
+  ALBER: { name: "alber", type: TEXT, description: "" },
   PAIN: { name: "pain", type: AUDIO, description: "" },
   PIC: { name: "pic", type: TEXT, description: "" },
   BUD: { name: "bud", type: AUDIO, description: "", permission: [G_.Bytes] },

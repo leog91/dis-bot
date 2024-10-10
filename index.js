@@ -94,6 +94,30 @@ let voice_enable = true;
 
 // client.guilds.cache.size
 
+client.on("voiceStateUpdate", async (oldMember, newMember) => {
+  // let newUserChannel = newMember.channelID;
+  // let oldUserChannel = oldMember.channelID;
+
+  console.log("oldMember", oldMember.member.user.username);
+
+  //rockola:583561991084310528;
+  // const channel = await client.channels.fetch(583561991084310528);
+
+  // general-eze
+  const channel = await client.channels.fetch(233725944911626240);
+
+  // console.log("channel", channel);
+
+  //wannaplay
+
+  if (oldMember.guild == 233725944911626240) {
+    //check if bot
+    // channel.send(`bigoton ${oldMember.member.user.username}`);
+  }
+
+  // console.log("newMember", newMember);
+});
+
 client.on("messageCreate", async (msg) => {
   if (msg.content === C_.STOP.name) {
     stop();
@@ -178,6 +202,26 @@ client.on("messageCreate", async (msg) => {
   if (available_bot && msg.content === C_.PIC.name) {
     msg.channel.send({
       files: ["./assets/images/garolfa-profile.jpg"],
+    });
+  }
+
+  if (available_bot && msg.content === C_.ALBER.name) {
+    msg.channel.send(
+      `han pasado ${Math.floor(
+        Math.random(99) * 100
+      )} días desde el ultimo bife`
+    );
+
+    const alberImg = [
+      "https://media.tiempodesanjuan.com/p/48241a6e591cec56477be174421c777c/adjuntos/331/imagenes/000/762/0000762150/790x0/smart/albertojpg.jpg",
+      "https://pbs.twimg.com/media/GUf-N3QXcAAfXJQ.jpg",
+      "https://www.clarin.com/img/2022/06/21/tLnSIH08I_720x0__1.jpg",
+      "https://media.lmcipolletti.com/p/be340a12bcd48535d5779ca8eb55d651/adjuntos/195/imagenes/007/483/0007483103/albertojpg.jpg",
+      "https://www.argentina.gob.ar/sites/default/files/alberto_fernandez_presidente_argentino_brinda_datos_con_graficos_sobre_coronavirus_0.jpg",
+    ];
+
+    msg.channel.send({
+      files: [alberImg[Math.floor(Math.random() * alberImg.length)]],
     });
   }
 
@@ -323,7 +367,7 @@ client.on("messageCreate", async (msg) => {
   }
 
   if (available_bot && msg.author.id === findUser(LEOG).id) {
-    msg.react("❤️");
+    // msg.react("❤️");
 
     // const data = await scrapper();
 
@@ -367,7 +411,7 @@ client.on("messageCreate", async (msg) => {
     return;
   }
 
-  available_bot && msg.react("🦖");
+  // available_bot && msg.react("🦖");
 });
 
 client.on("messageDelete", (msg) => {
