@@ -36,7 +36,8 @@ export const randomAsset = (command: Command): string => {
     }
 
     // Return a random asset path
-    return folderPaths[command] + assets[Math.floor(Math.random() * assets.length)];
+    // return folderPaths[command] + assets[Math.floor(Math.random() * assets.length)];
+    return assets[Math.floor(Math.random() * assets.length)];
 };
 
 console.log("folderPaths", folderPaths["age"]);

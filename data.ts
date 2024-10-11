@@ -87,7 +87,7 @@ export const C_: Record<
         name: "incondicional",
         type: AUDIO,
         description: "",
-        permission: [G_.Bytes],
+        // permission: [G_.Bytes],
     },
     PETI: {
         name: "peti",
