@@ -2,15 +2,15 @@ import fs from "fs";
 import { TextChannel } from "discord.js"; // Importing TextChannel for type annotation
 
 // Type for commands
-type Command = "cat" | "age"; // Add more commands as needed
+// export type Command = "cat" | "age"; // Add more commands as needed
 
 // Define the folder paths with a type annotation
-const folderPaths: Record<Command, string> = {
+const folderPaths: Record<string, string> = {
     cat: "./assets/images/meme/cat/",
     age: "./assets/audio/age/",
 };
 
-export const sendRandomImg = (command: Command, channel: TextChannel): void => {
+export const sendRandomImg = (command: string, channel: TextChannel): void => {
     const assets: string[] = fs.readdirSync(folderPaths[command]);
 
     // Check if there are assets to send
@@ -26,7 +26,7 @@ export const sendRandomImg = (command: Command, channel: TextChannel): void => {
     });
 };
 
-export const randomAsset = (command: Command): string => {
+export const randomAsset = (command: string): string => {
     const assets: string[] = fs.readdirSync(folderPaths[command]);
 
     // Check if there are assets available
