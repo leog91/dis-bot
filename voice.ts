@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 
 import { Message } from "discord.js";
 import { randomAsset } from "./utils.ts";
+import { logger } from "./index.ts";
 const __filename = fileURLToPath(import.meta.url);
 
 const __dirname = dirname(__filename);
@@ -42,7 +43,7 @@ export const joinVoiceC = async (message: Message) => {
             connection.subscribe(player);
         }
 
-        console.log(`Joined voice channel: ${channel.name} in guild: ${message.guild.name}`);
+        logger(`Joined voice channel: ${channel.name} in guild: ${message.guild.name}`);
     } else {
         message.reply("You need to be in a voice channel to use this command!");
     }
@@ -59,7 +60,7 @@ export const leaveVoiceChannel = (message: Message) => {
             connection.disconnect();
             connections.delete(guildId);
             audioPlayers.delete(guildId);
-            console.log(`Left voice channel in guild: ${message.guild?.name}`);
+            logger(`Left voice channel in guild: ${message.guild?.name}`);
         }
     } else {
         message.reply("The bot is not connected to a voice channel in this server.");
@@ -112,7 +113,7 @@ export const playSong = async (songName: string, message: Message, isRandom: boo
         player.play(resource);
 
         player.on(AudioPlayerStatus.Playing, () => {
-            console.log(`Now playing: ${songName}`);
+            logger(`<${message.guild?.name}>`, message.author.displayName, `[${message.author.username}]`, `Now playing: ${songName}`);
         });
 
 
@@ -123,6 +124,7 @@ export const playSong = async (songName: string, message: Message, isRandom: boo
 
         player.on('error', error => {
             console.error(`Error: ${error.message}`);
+            logger(`Error: ${error.message}`);
             message.reply("There was an error playing the audio.");
         });
     }
@@ -133,7 +135,7 @@ export const playSong = async (songName: string, message: Message, isRandom: boo
 
 // Function to play a specific song and then perform voice actions
 export const playSongBis = async (songName: string, message: Message) => {
-    // console.log("songname", songName)
+
     await playSong(songName, message, false);
     voiceFun(message);
 };

@@ -40,4 +40,4 @@ export const randomAsset = (command: string): string => {
     return assets[Math.floor(Math.random() * assets.length)];
 };
 
-console.log("folderPaths", folderPaths["age"]);
+

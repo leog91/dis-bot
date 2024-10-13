@@ -43,25 +43,40 @@ const client: Client<boolean> = new Client({
     ],
 });
 
+
+
+
+export const logger = (...args: (string | number | undefined)[]) => {
+    console.log(new Date().toISOString(), "|", args.map(str => str?.toString().trim()).join(' '))
+
+}
+
+
+
 // Use await in an async function
 (async () => {
     await client.login(process.env.BOT_TOKEN as string);
     client.user?.setActivity("commands >> 'aiuda'");
+
+
+
+
 
     let available_bot = true;
 
     client.on("voiceStateUpdate", async (oldMember, newMember) => {
 
 
-        console.log(oldMember.member?.user.username, " left =>", oldMember.guild.name, ">", oldMember.channel?.name);
+        logger(oldMember.member?.user.username, " left =>", oldMember.guild.name, ">", oldMember.channel?.name)
 
 
-        console.log(newMember.member?.user.username, " join =>", newMember.guild.name, ">", newMember.channel?.name);
+
+        logger(newMember.member?.user.username, " join =>", newMember.guild.name, ">", newMember.channel?.name);
 
 
         // Check if the old member is leaving the voice channel
         if (oldMember.channelId && !newMember.channelId) {
-            console.log(`${oldMember.member?.user.username} has left SERVER [${oldMember.guild.name}]`);
+            logger(`${oldMember.member?.user.username} has left SERVER [${oldMember.guild.name}]`);
             // Add any additional logic for when a user leaves the voice channel here
         }
     });
@@ -118,11 +133,12 @@ const client: Client<boolean> = new Client({
                 voiceFun(msg);
             } catch (error) {
                 console.error(error);
+                logger(error);
             }
             return;
         }
         if (available_bot && msg.content === "followMe") {
-            console.log("followme>")
+            logger("followme>")
             try {
                 await changeVoiceChannel(msg)
             } catch (error) {
@@ -141,6 +157,7 @@ const client: Client<boolean> = new Client({
                 voiceFun(msg);
             } catch (error) {
                 console.error(error);
+                logger(error);
             }
             return;
         }
@@ -186,6 +203,7 @@ const client: Client<boolean> = new Client({
                 voiceFun(msg);
             } catch (error) {
                 console.error(error);
+                logger(error);
             }
             return;
         }
@@ -193,10 +211,11 @@ const client: Client<boolean> = new Client({
 
         if (available_bot && msg.content === "pase") {
             try {
-                await playSong("ELPASEDESPOCK", msg);
                 voiceFun(msg);
+                await playSong("ELPASEDESPOCK", msg);
             } catch (error) {
                 console.error(error);
+                logger(error);
             }
         }
 
@@ -208,6 +227,7 @@ const client: Client<boolean> = new Client({
 
             } catch (error) {
                 console.error(error);
+                logger(error);
             }
             return;
         }
@@ -222,6 +242,7 @@ const client: Client<boolean> = new Client({
 
             } catch (error) {
                 console.error(error);
+                logger(error);
             }
             return;
         }
@@ -233,6 +254,7 @@ const client: Client<boolean> = new Client({
 
             } catch (error) {
                 console.error(error);
+                logger(error);
             }
             return;
         }
@@ -255,6 +277,7 @@ const client: Client<boolean> = new Client({
 
             } catch (error) {
                 console.error(error);
+                logger(error);
             }
             return;
         }
@@ -264,5 +287,5 @@ const client: Client<boolean> = new Client({
 })();
 
 client.on("ready", async () => {
-    console.log("Discord.js client is ready!");
+    logger("Discord.js client is ready!");
 });

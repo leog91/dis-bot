@@ -20,5 +20,3 @@ const folderPaths = {
   cat: "./assets/images/meme/cat/",
   age: "./assets/audio/age/",
 };
-
-console.log("folderPaths", folderPaths["age"]);

@@ -4,8 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "prepare-logs": "mkdir -p logs",
     "dev": "node --watch --experimental-strip-types index.ts",
-    "dev2": "nodemon index.js --ignore db.json",
+    "dev-logging": "npm run prepare-logs && npm run dev >> logs/log-$(date +%Y-%m-%d).txt 2>&1",
+    "dev-logging-watch": "npm run dev-logging & tail -f logs/log-$(date +%Y-%m-%d).txt",
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
