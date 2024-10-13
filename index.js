@@ -238,6 +238,8 @@ client.on("messageCreate", async (msg) => {
     }
   }
 
+  ///
+
   if (available_bot && msg.content === C_.STATS.name) {
     // db.data.pain[msg.author.username] &&
     // msg.reply(String(db.data.pain[msg.author.username]));

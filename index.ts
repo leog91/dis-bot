@@ -190,6 +190,17 @@ const client: Client<boolean> = new Client({
             return;
         }
 
+
+        if (available_bot && msg.content === "pase") {
+            try {
+                await playSong("ELPASEDESPOCK", msg);
+                voiceFun(msg);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+
         if (available_bot && msg.content === C_.PAIN.name) {
             try {
                 voiceFun(msg);
