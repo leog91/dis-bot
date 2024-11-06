@@ -27,6 +27,7 @@ import {
     resume,
     playRandom,
     changeVoiceChannel,
+    leaveVoiceChannelFromGuild,
 } from "./voice.ts";
 
 import { sendRandomImg } from "./utils.ts";
@@ -289,3 +290,27 @@ export const logger = (...args: (string | number | undefined)[]) => {
 client.on("ready", async () => {
     logger("Discord.js client is ready!");
 });
+
+
+
+//add timeOut =>> // move to same event 
+client.on("voiceStateUpdate", async (oldMember, newMember) => {
+
+    const usersLeft = oldMember.channel?.members.map(m => m.user.username)
+
+    console.log(usersLeft?.length)
+
+    if (usersLeft?.length === 1 && usersLeft[0] === "Garolfa") {
+        console.log("only garolfa")
+        leaveVoiceChannelFromGuild(oldMember.guild)
+    }
+});
+
+
+// function checkInterval() {
+//     // Example: updating a timestamp or small UI element
+//     logger("tesstt ++++++")
+// }
+
+// Run myFunction every 5 seconds
+// setInterval(checkInterval, 5000);

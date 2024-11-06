@@ -7,7 +7,7 @@ import { createAudioPlayer, joinVoiceChannel, createAudioResource, AudioPlayerSt
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 
-import { Message } from "discord.js";
+import { Guild, Message } from "discord.js";
 import { randomAsset } from "./utils.ts";
 import { logger } from "./index.ts";
 const __filename = fileURLToPath(import.meta.url);
@@ -50,6 +50,21 @@ export const joinVoiceC = async (message: Message) => {
 };
 
 
+export const leaveVoiceChannelFromGuild = (guild: Guild) => {
+    const guildId = guild.id
+
+    if (connections.has(guildId)) {
+        const connection = connections.get(guildId);
+        if (connection) {
+            connection.disconnect();
+            connections.delete(guildId);
+            audioPlayers.delete(guildId);
+            logger(`Left voice channel in guild: ${guild.name}`);
+        }
+    } else {
+        logger(`The bot is not connected to a voice channel in this server [ $ ${guild.name}].`);
+    }
+};
 
 //Function to leave the voice channel
 export const leaveVoiceChannel = (message: Message) => {
