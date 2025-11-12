@@ -1,6 +1,5 @@
-
 // index.ts
-import { TextChannel, Client, GatewayIntentBits, Message } from "discord.js";
+import { TextChannel, Client, GatewayIntentBits, Message, Guild } from "discord.js";
 import dotenv from "dotenv";
 
 
@@ -27,7 +26,7 @@ import {
     resume,
     playRandom,
     changeVoiceChannel,
-    leaveVoiceChannelFromGuild,
+    leaveVoiceChannelFromGuild as importedLeaveVoiceChannelFromGuild,
 } from "./voice.ts";
 
 import { sendRandomImg } from "./utils.ts";
@@ -134,7 +133,7 @@ export const logger = (...args: (string | number | undefined)[]) => {
                 voiceFun(msg);
             } catch (error) {
                 console.error(error);
-                logger(error);
+                // logger(error instanceof Error ? error.message : String(error));
             }
             return;
         }
@@ -158,7 +157,7 @@ export const logger = (...args: (string | number | undefined)[]) => {
                 voiceFun(msg);
             } catch (error) {
                 console.error(error);
-                logger(error);
+                // logger(error instanceof Error ? error.message : String(error));
             }
             return;
         }
@@ -204,7 +203,7 @@ export const logger = (...args: (string | number | undefined)[]) => {
                 voiceFun(msg);
             } catch (error) {
                 console.error(error);
-                logger(error);
+                // logger(error instanceof Error ? error.message : String(error));
             }
             return;
         }
@@ -216,7 +215,7 @@ export const logger = (...args: (string | number | undefined)[]) => {
                 await playSong("ELPASEDESPOCK", msg);
             } catch (error) {
                 console.error(error);
-                logger(error);
+                // logger(error instanceof Error ? error.message : String(error));
             }
         }
 
@@ -228,10 +227,41 @@ export const logger = (...args: (string | number | undefined)[]) => {
 
             } catch (error) {
                 console.error(error);
-                logger(error);
+                logger(error instanceof Error ? error.message : String(error));
             }
             return;
         }
+
+        if (available_bot && msg.content === C_.CACHETE.name
+            // && C_.INCONDICIONAL.permission?.find((g) => g.id === msg.guildId)
+
+        ) {
+            try {
+                voiceFun(msg);
+                await playSong("rulo_suelta_cachete", msg);
+
+            } catch (error) {
+                console.error(error);
+                // logger(error instanceof Error ? error.message : String(error));
+            }
+            return;
+        }
+
+
+        if (available_bot && msg.content === C_.ULTRAVIOLETA.name
+        ) {
+            try {
+                voiceFun(msg);
+                await playSong("rayos-ultravioleta", msg);
+
+            } catch (error) {
+                console.error(error);
+                // logger(error instanceof Error ? error.message : String(error));
+            }
+            return;
+        }
+
+
 
         if (available_bot && msg.content === C_.INCONDICIONAL.name
             // && C_.INCONDICIONAL.permission?.find((g) => g.id === msg.guildId)
@@ -243,10 +273,11 @@ export const logger = (...args: (string | number | undefined)[]) => {
 
             } catch (error) {
                 console.error(error);
-                logger(error);
+                logger(error instanceof Error ? error.message : String(error));
             }
             return;
         }
+
 
         if (available_bot && msg.content === C_.DIENTES.name && C_.DIENTES.permission?.find((g) => g.id === msg.guildId)) {
             try {
@@ -255,7 +286,7 @@ export const logger = (...args: (string | number | undefined)[]) => {
 
             } catch (error) {
                 console.error(error);
-                logger(error);
+                // logger(error instanceof Error ? error.message : String(error));
             }
             return;
         }
@@ -278,7 +309,7 @@ export const logger = (...args: (string | number | undefined)[]) => {
 
             } catch (error) {
                 console.error(error);
-                logger(error);
+                // logger(error instanceof Error ? error.message : String(error));
             }
             return;
         }
@@ -287,30 +318,48 @@ export const logger = (...args: (string | number | undefined)[]) => {
     });
 })();
 
-client.on("ready", async () => {
+client.on("clientReady", async () => {
     logger("Discord.js client is ready!");
 });
 
 
 
-//add timeOut =>> // move to same event 
-client.on("voiceStateUpdate", async (oldMember, newMember) => {
+// Store timeouts for each guild
+const guildTimeouts = new Map<string, NodeJS.Timeout>();
 
-    const usersLeft = oldMember.channel?.members.map(m => m.user.username)
+client.on("voiceStateUpdate", async (oldState, newState) => {
+    const guildId = oldState.guild.id;
+    const channel = oldState.channel;
 
-    console.log(usersLeft?.length)
+    // Clear existing timeout if there is one
+    if (guildTimeouts.has(guildId)) {
+        clearTimeout(guildTimeouts.get(guildId));
+        guildTimeouts.delete(guildId);
+    }
 
-    if (usersLeft?.length === 1 && usersLeft[0] === "Garolfa") {
-        console.log("only garolfa")
-        leaveVoiceChannelFromGuild(oldMember.guild)
+    if (channel?.members.size === 2) {
+        console.log("alone")
+        const members = channel.members.map(m => m.user.username);
+        console.log(members.length)
+        const isAloneWithBot = members.includes("Garolfa") && members.length === 2;
+
+        if (isAloneWithBot) {
+            // Set 5 minute timeout before disconnecting
+            const timeout = setTimeout(() => {
+                importedLeaveVoiceChannelFromGuild(oldState.guild);
+                guildTimeouts.delete(guildId);
+            }, 5 * 60 * 1000); // 5 minutes in milliseconds
+
+            guildTimeouts.set(guildId, timeout);
+        }
     }
 });
 
-
-// function checkInterval() {
-//     // Example: updating a timestamp or small UI element
-//     logger("tesstt ++++++")
-// }
-
-// Run myFunction every 5 seconds
-// setInterval(checkInterval, 5000);
+// Cleanup timeouts when bot leaves
+function leaveVoiceChannelFromGuild(guild: Guild) {
+    if (guildTimeouts.has(guild.id)) {
+        clearTimeout(guildTimeouts.get(guild.id));
+        guildTimeouts.delete(guild.id);
+    }
+    // ...existing leave logic...
+}

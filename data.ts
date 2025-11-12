@@ -56,6 +56,8 @@ export const C_: Record<
     PAIN: { name: "pain", type: AUDIO, description: "" },
     PIC: { name: "pic", type: TEXT, description: "" },
     BUD: { name: "bud", type: AUDIO, description: "", permission: [G_.Bytes] },
+    CACHETE: { name: "cachete", type: AUDIO, description: "", permission: [G_.Bytes] },
+    ULTRAVIOLETA: { name: "ultravioleta", type: AUDIO, description: "", permission: [G_.Bytes] },
     CAT: { name: "cat", type: TEXT, description: "" },
     LAS_QUIERO: { name: "las quiero", type: AUDIO, description: "" },
     STATS: { name: "stats", type: TEXT, description: "" },
