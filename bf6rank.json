@@ -1,0 +1,74 @@
+[
+  {
+    "id": "3194756111",
+    "kills": 11603,
+    "platformUserHandle": "ByteS-puchoprendido",
+    "user": "gd92",
+    "deaths": 4557,
+    "revives": 1544,
+    "score": 4438160,
+    "careerPlayerRank": 140,
+    "timePlayedDisplay": "132h",
+    "timePlayedValue": 478745
+  },
+  {
+    "id": "3211453693",
+    "kills": 9053,
+    "platformUserHandle": "pablocc74",
+    "user": "pablocc74",
+    "deaths": 4022,
+    "revives": 2945,
+    "score": 3995200,
+    "careerPlayerRank": 135,
+    "timePlayedDisplay": "123h",
+    "timePlayedValue": 445964
+  },
+  {
+    "id": "2778059679",
+    "kills": 8360,
+    "platformUserHandle": "Zanella50",
+    "user": "andy",
+    "deaths": 3930,
+    "revives": 750,
+    "score": 3215800,
+    "careerPlayerRank": 114,
+    "timePlayedDisplay": "82h",
+    "timePlayedValue": 296255
+  },
+  {
+    "id": "3113523271",
+    "kills": 5384,
+    "platformUserHandle": "DiegoMave",
+    "user": "Mave",
+    "deaths": 3709,
+    "revives": 1154,
+    "score": 2183785,
+    "careerPlayerRank": 92,
+    "timePlayedDisplay": "72h",
+    "timePlayedValue": 262765
+  },
+  {
+    "id": "3120040957",
+    "kills": 3032,
+    "platformUserHandle": "AxelFLoyd",
+    "user": "AxelFLoyd",
+    "deaths": 1803,
+    "revives": 559,
+    "score": 1386990,
+    "careerPlayerRank": 70,
+    "timePlayedDisplay": "47h",
+    "timePlayedValue": 169981
+  },
+  {
+    "id": "3105796734",
+    "kills": 1370,
+    "platformUserHandle": "Lik4n",
+    "user": "Lik4n",
+    "deaths": 1047,
+    "revives": 994,
+    "score": 895955,
+    "careerPlayerRank": 54,
+    "timePlayedDisplay": "32h",
+    "timePlayedValue": 116758
+  }
+]

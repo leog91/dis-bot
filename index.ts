@@ -1,6 +1,7 @@
 // index.ts
 import { TextChannel, Client, GatewayIntentBits, Message, Guild } from "discord.js";
 import dotenv from "dotenv";
+import fs from "fs/promises";
 
 
 
@@ -33,6 +34,7 @@ import { sendRandomImg } from "./utils.ts";
 import {
     C_,
 } from "./data.ts"; // Adjust based on your actual structure
+// import { bf6Rank } from "./utils/bf6rank.ts";
 
 const client: Client<boolean> = new Client({
     intents: [
@@ -196,6 +198,159 @@ export const logger = (...args: (string | number | undefined)[]) => {
             }
             return;
         }
+
+        //
+        if (available_bot && msg.content === "bf6kills") {
+            if (!(msg.channel instanceof TextChannel)) {
+                await msg.reply("This command can only be used in a text channel.");
+                return;
+            }
+
+            // await msg.reply("📊 Loading stored BF6 rank data...");
+
+            try {
+                const file = await fs.readFile("./bf6rank.json", "utf-8");
+                const bfdata = JSON.parse(file);
+
+                const content = bfdata
+                    .map((p: any, i: number) => `${p.platformUserHandle} - ${p.kills} kills`)
+                    .join("\n");
+
+                await msg.reply(content || "No rank data available yet.");
+            } catch (err) {
+                console.error("Error reading bf6rank.json:", err);
+                // await msg.reply("❌ Rank data file not found or invalid. Try running the update script first.");
+            }
+        }
+
+        //
+        if (available_bot && msg.content === "bf6deaths") {
+            if (!(msg.channel instanceof TextChannel)) {
+                await msg.reply("This command can only be used in a text channel.");
+                return;
+            }
+
+            // await msg.reply("📊 Loading stored BF6 rank data...");
+
+            try {
+                const file = await fs.readFile("./bf6rank.json", "utf-8");
+                const bfdata = JSON.parse(file).sort((a: any, b: any) => b.deaths - a.deaths);
+
+                const content = bfdata
+                    .map((p: any, i: number) => `${p.platformUserHandle} - ${p.deaths} deaths`)
+                    .join("\n");
+
+                await msg.reply(content || "No rank data available yet.");
+            } catch (err) {
+                console.error("Error reading bf6rank.json:", err);
+                // await msg.reply("❌ Rank data file not found or invalid. Try running the update script first.");
+            }
+        }
+
+
+        if (available_bot && msg.content === "bf6revives") {
+            if (!(msg.channel instanceof TextChannel)) {
+                await msg.reply("This command can only be used in a text channel.");
+                return;
+            }
+
+            // await msg.reply("📊 Loading stored BF6 rank data...");
+
+            try {
+                const file = await fs.readFile("./bf6rank.json", "utf-8");
+                const bfdata = JSON.parse(file).sort((a: any, b: any) => b.revives - a.revives);
+
+                const content = bfdata
+                    .map((p: any, i: number) => `${p.platformUserHandle} - ${p.revives} revives`)
+                    .join("\n");
+
+                await msg.reply(content || "No rank data available yet.");
+            } catch (err) {
+                console.error("Error reading bf6rank.json:", err);
+                // await msg.reply("❌ Rank data file not found or invalid. Try running the update script first.");
+            }
+        }
+
+
+        //test
+
+        if (available_bot && msg.content === "bf6score") {
+            if (!(msg.channel instanceof TextChannel)) {
+                await msg.reply("This command can only be used in a text channel.");
+                return;
+            }
+
+            // await msg.reply("📊 Loading stored BF6 rank data...");
+
+            try {
+                const file = await fs.readFile("./bf6rank.json", "utf-8");
+                const bfdata = JSON.parse(file).sort((a: any, b: any) => b.score - a.score);
+
+                const content = bfdata
+                    .map((p: any, i: number) => `${p.platformUserHandle} - ${p.score} `)
+                    .join("\n");
+
+                await msg.reply(content || "No rank data available yet.");
+            } catch (err) {
+                console.error("Error reading bf6rank.json:", err);
+                // await msg.reply("❌ Rank data file not found or invalid. Try running the update script first.");
+            }
+        }
+
+
+        //test
+
+        if (available_bot && msg.content === "bf6rank") {
+            if (!(msg.channel instanceof TextChannel)) {
+                await msg.reply("This command can only be used in a text channel.");
+                return;
+            }
+
+            // await msg.reply("📊 Loading stored BF6 rank data...");
+
+            try {
+                const file = await fs.readFile("./bf6rank.json", "utf-8");
+                const bfdata = JSON.parse(file).sort((a: any, b: any) => b.careerPlayerRank - a.careerPlayerRank);
+
+                const content = bfdata
+                    .map((p: any, i: number) => `${p.platformUserHandle} - Rank ${p.careerPlayerRank} `)
+                    .join("\n");
+
+                await msg.reply(content || "No rank data available yet.");
+            } catch (err) {
+                console.error("Error reading bf6rank.json:", err);
+                // await msg.reply("❌ Rank data file not found or invalid. Try running the update script first.");
+            }
+        }
+
+        //test
+        if (available_bot && msg.content === "bf6timePlayed") {
+            if (!(msg.channel instanceof TextChannel)) {
+                await msg.reply("This command can only be used in a text channel.");
+                return;
+            }
+
+            // await msg.reply("📊 Loading stored BF6 rank data...");
+
+            try {
+                const file = await fs.readFile("./bf6rank.json", "utf-8");
+                const bfdata = JSON.parse(file).sort((a: any, b: any) => b.timePlayedValue - a.timePlayedValue);
+
+                const content = bfdata
+                    .map((p: any, i: number) => `${p.platformUserHandle} - Rank ${p.timePlayedDisplay} `)
+                    .join("\n");
+
+                await msg.reply(content || "No rank data available yet.");
+            } catch (err) {
+                console.error("Error reading bf6rank.json:", err);
+                // await msg.reply("❌ Rank data file not found or invalid. Try running the update script first.");
+            }
+        }
+
+
+
+
+        //
 
         if (available_bot && msg.content === C_.LAS_QUIERO.name) {
             try {
