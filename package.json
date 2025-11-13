@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js --ignore db.json",
+    "prepare-logs": "mkdir -p logs",
+    "dev": "node --watch --experimental-strip-types index.ts",
+    "dev-logging": "npm run prepare-logs && npm run dev >> logs/log-$(date +%Y-%m-%d).txt 2>&1",
+    "dev-logging-watch": "npm run dev-logging & tail -f logs/log-$(date +%Y-%m-%d).txt",
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -14,16 +17,17 @@
   "license": "ISC",
   "dependencies": {
     "@discordjs/opus": "^0.9.0",
-    "@discordjs/voice": "^0.14.0",
-    "discord.js": "^14.7.0",
-    "dotenv": "^16.0.3",
-    "ffmpeg-static": "^5.1.0",
-    "libsodium-wrappers": "^0.7.10",
-    "lowdb": "^5.0.5",
-    "opusscript": "^0.0.8",
+    "@discordjs/voice": "^0.19.0",
+    "@snazzah/davey": "^0.1.7",
+    "discord.js": "^14.24.2",
+    "dotenv": "^16.4.5",
+    "ffmpeg-static": "^5.2.0",
+    "libsodium-wrappers": "^0.7.15",
+    "lowdb": "^7.0.1",
+    "opusscript": "^0.1.1",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
-    "nodemon": "^2.0.20"
+    "nodemon": "^3.1.7"
   }
 }
