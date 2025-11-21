@@ -1,5 +1,5 @@
 import fs from "fs";
-import { TextChannel } from "discord.js"; // Importing TextChannel for type annotation
+import { NewsChannel, TextChannel, ThreadChannel } from "discord.js"; // Importing TextChannel for type annotation
 
 // Type for commands
 // export type Command = "cat" | "age"; // Add more commands as needed
@@ -10,22 +10,23 @@ const folderPaths: Record<string, string> = {
     age: "./assets/audio/age/",
 };
 
-export const sendRandomImg = (command: string, channel: TextChannel): void => {
+type ImageChannel = TextChannel | ThreadChannel | NewsChannel;
+
+export const sendRandomImg = async (command: string, channel: ImageChannel): Promise<void> => {
     const assets: string[] = fs.readdirSync(folderPaths[command]);
 
-    // Check if there are assets to send
     if (assets.length === 0) {
         console.error(`No images found in folder: ${folderPaths[command]}`);
-        return; // Exit the function if there are no assets
+        return;
     }
 
-    // Send a random image from the assets folder
     const randomAsset = assets[Math.floor(Math.random() * assets.length)];
-    channel.send({
+
+    // Await the send so TypeScript knows this is async
+    await channel.send({
         files: [folderPaths[command] + randomAsset],
     });
 };
-
 export const randomAsset = (command: string): string => {
     const assets: string[] = fs.readdirSync(folderPaths[command]);
 

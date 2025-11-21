@@ -19,7 +19,11 @@ const players: Player[] = [
     { userName: "Mave", id: "3113523271" },
     { userName: "andy", id: "2778059679" },
     { userName: "AxelFLoyd", id: "3120040957" },
+    { userName: "giraldo", id: "3165910038" },
+    { userName: "salsagolf", id: "3176788207" },
+    { userName: "perro", id: "1000350916995" },
 
+    { userName: "fedepolito", id: "3146576220" },
 
 
 ];

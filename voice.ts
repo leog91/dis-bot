@@ -1,226 +1,166 @@
 
+import {
+    joinVoiceChannel,
+    createAudioPlayer,
+    createAudioResource,
+    AudioPlayer,
+    AudioResource,
+    AudioPlayerStatus,
+    VoiceConnection,
+} from "@discordjs/voice";
 
-// voice.ts
-import { join } from "path";
-import { createAudioPlayer, joinVoiceChannel, createAudioResource, AudioPlayerStatus, VoiceConnection, AudioPlayer, AudioResource } from "@discordjs/voice";
-
-import { dirname } from "path";
+import { Message, Guild } from "discord.js";
+import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
-import { Guild, Message } from "discord.js";
-import { randomAsset } from "./utils.ts";
-import { logger } from "./index.ts";
 const __filename = fileURLToPath(import.meta.url);
-
 const __dirname = dirname(__filename);
 
+// -------------------------------------------------------
+// Core DATA
+// -------------------------------------------------------
 
+export class GuildVoiceManager {
+    guildId: string;
+    connection: VoiceConnection | null = null;
+    player: AudioPlayer | null = null;
 
-// Maps to store audio players and connections per guild (server)
-const audioPlayers = new Map<string, AudioPlayer>();
-const connections = new Map<string, VoiceConnection>();
+    constructor(guildId: string) {
+        this.guildId = guildId;
+    }
 
-// Function to join a voice channel
-export const joinVoiceC = async (message: Message) => {
-    const channel = message.member?.voice.channel;
-
-    // Check if the guild and channel are not null
-    if (message.guild && channel) {
-        // Join the voice channel using joinVoiceChannel from @discordjs/voice
-        const connection = joinVoiceChannel({
-            channelId: channel.id,
-            guildId: message.guild.id,
-            adapterCreator: message.guild.voiceAdapterCreator as any, // Use 'as any' if necessary
-        });
-
-        // Store the connection in the Map
-        connections.set(message.guild.id, connection);
-
-        // Create and store a new audio player for this guild if it doesn’t exist
-        if (!audioPlayers.has(message.guild.id)) {
-            const player = createAudioPlayer();
-            audioPlayers.set(message.guild.id, player);
-            connection.subscribe(player);
+    // ---------------------------------------------------
+    // Ensure connection + player exist
+    // ---------------------------------------------------
+    async ensureReady(msg: Message): Promise<AudioPlayer> {
+        const channel = msg.member?.voice.channel;
+        if (!channel) {
+            throw new Error("User is not in a voice channel.");
         }
 
-        logger(`Joined voice channel: ${channel.name} in guild: ${message.guild.name}`);
-    } else {
-        message.reply("You need to be in a voice channel to use this command!");
-    }
-};
-
-
-export const leaveVoiceChannelFromGuild = (guild: Guild) => {
-    const guildId = guild.id
-
-    if (connections.has(guildId)) {
-        const connection = connections.get(guildId);
-        if (connection) {
-            connection.disconnect();
-            connections.delete(guildId);
-            audioPlayers.delete(guildId);
-            logger(`Left voice channel in guild: ${guild.name}`);
+        // Create connection if missing
+        if (!this.connection) {
+            this.connection = joinVoiceChannel({
+                channelId: channel.id,
+                guildId: this.guildId,
+                adapterCreator: msg.guild!.voiceAdapterCreator as any,
+            });
         }
-    } else {
-        logger(`The bot is not connected to a voice channel in this server [ $ ${guild.name}].`);
-    }
-};
 
-//Function to leave the voice channel
-export const leaveVoiceChannel = (message: Message) => {
-    const guildId = message.guild?.id;
-    if (guildId && connections.has(guildId)) {
-        const connection = connections.get(guildId);
-        if (connection) {
-            connection.disconnect();
-            connections.delete(guildId);
-            audioPlayers.delete(guildId);
-            logger(`Left voice channel in guild: ${message.guild?.name}`);
+        // Create player if missing
+        if (!this.player) {
+            this.player = createAudioPlayer();
+            this.connection.subscribe(this.player);
         }
-    } else {
-        message.reply("The bot is not connected to a voice channel in this server.");
-    }
-};
 
-
-// Function to change to a new voice channel
-export const changeVoiceChannel = async (message: Message) => {
-    const currentGuildId = message.guild?.id;
-    const channel = message.member?.voice.channel;
-
-    // Check if the user is in a voice channel
-    if (!channel) {
-        message.reply("You need to be in a voice channel to change channels!");
-        return;
+        return this.player;
     }
 
-    // Check if the bot is already connected to a voice channel
-    if (connections.has(currentGuildId || "")) {
-        leaveVoiceChannel(message); // Leave the current channel
+    // ---------------------------------------------------
+    // Join explicitly
+    // ---------------------------------------------------
+    async join(msg: Message) {
+        const channel = msg.member?.voice.channel;
+        if (!channel) return msg.reply("❌ You must be in a voice channel.");
+
+        if (!this.connection) {
+            this.connection = joinVoiceChannel({
+                channelId: channel.id,
+                guildId: this.guildId,
+                adapterCreator: msg.guild!.voiceAdapterCreator as any,
+            });
+        }
+
+        if (!this.player) {
+            this.player = createAudioPlayer();
+            this.connection.subscribe(this.player);
+        }
+
+        msg.reply(`🔊 Joined **${channel.name}**.`);
     }
 
-    // Join the new voice channel
-    await joinVoiceC(message);
-};
+    // ---------------------------------------------------
+    // Leave & cleanup
+    // ---------------------------------------------------
+    async leave(msg?: Message | Guild) {
+        if (!this.connection) {
+            if (msg instanceof Message) msg.reply("🚫 Not in a voice channel.");
+            return;
+        }
 
+        this.connection.disconnect();
+        this.connection = null;
+        this.player = null;
 
-
-// Function to play a specific song
-export const playSong = async (songName: string, message: Message, isRandom: boolean = false) => {
-
-    const guildId = message.guild?.id;
-    const player = audioPlayers.get(guildId || "");
-    let resource: AudioResource<null>
-
-    if (isRandom) {
-        resource = createAudioResource(join(__dirname, `./assets/audio/age/${songName}`));
-    } else {
-        resource = createAudioResource(join(__dirname, `./assets/audio/${songName}.mp3`));
+        if (msg instanceof Message) msg.reply("👋 Disconnected from voice.");
     }
 
-    if (player) {
+    // ---------------------------------------------------
+    // Play audio
+    // ---------------------------------------------------
+    async play(msg: Message, filename: string, isRandom = false) {
+        let player: AudioPlayer;
 
+        try {
+            player = await this.ensureReady(msg);
+        } catch (err: any) {
+            return msg.reply("⚠️ " + err.message);
+        }
 
-        // cleaning player
-        player.removeAllListeners()
+        const filePath = isRandom
+            ? join(__dirname, `./assets/audio/age/${filename}`)
+            : join(__dirname, `./assets/audio/${filename}.mp3`);
 
+        const resource: AudioResource<any> = createAudioResource(filePath);
 
+        player.removeAllListeners();
         player.play(resource);
 
         player.on(AudioPlayerStatus.Playing, () => {
-            logger(`<${message.guild?.name}>`, message.author.displayName, `[${message.author.username}]`, `Now playing: ${songName}`);
+            // console.log(`Now playing: ${filename}`);
         });
 
-
-
-        // audioPlayer.on(AudioPlayerStatus.Idle, () => {
-        //     leaveVoiceChannel();
-        // });
-
-        player.on('error', error => {
-            console.error(`Error: ${error.message}`);
-            logger(`Error: ${error.message}`);
-            message.reply("There was an error playing the audio.");
+        player.on("error", (err) => {
+            console.error(err);
+            msg.reply("⚠️ Audio playback error.");
         });
     }
-    if (!player) {
-        message.reply("Audio player is not initialized.");
+
+    pause(msg: Message) {
+        if (!this.player) return msg.reply("⏸️ Nothing is playing.");
+        this.player.pause();
+        msg.reply("⏸️ Paused.");
     }
-};
 
-// Function to play a specific song and then perform voice actions
-export const playSongBis = async (songName: string, message: Message) => {
-
-    await playSong(songName, message, false);
-    voiceFun(message);
-};
-
-// Function to stop playback
-export const stop = (message: Message) => {
-    const guildId = message.guild?.id;
-    const player = audioPlayers.get(guildId || "");
-    if (player) {
-        player.stop();
-        message.reply("Playback stopped.");
-    } else {
-        message.reply("No audio is playing in this server.");
+    resume(msg: Message) {
+        if (!this.player) return msg.reply("▶️ Nothing to resume.");
+        this.player.unpause();
+        msg.reply("▶️ Resumed.");
     }
-};
 
-// Function to pause playback
-export const pause = (message: Message) => {
-    const guildId = message.guild?.id;
-    const player = audioPlayers.get(guildId || "");
-    if (player) {
-        player.pause();
-        message.reply("Playback paused.");
-    } else {
-        message.reply("No audio is playing in this server.");
+    stop(msg: Message) {
+        if (!this.player) return msg.reply("⛔ No audio to stop.");
+        this.player.stop();
+        msg.reply("🛑 Stopped.");
     }
-};
 
-// Function to resume playback
-export const resume = (message: Message) => {
-    const guildId = message.guild?.id;
-    const player = audioPlayers.get(guildId || "");
-    if (player) {
-        player.unpause();
-        message.reply("Playback resumed.");
-    } else {
-        message.reply("No audio is paused in this server.");
+    async followMe(msg: Message) {
+        await this.leave();
+        await this.join(msg);
     }
-};
-// Function to play a random song
-export const playRandom = async (category: string, message: Message) => {
-
-    const random = randomAsset("age")
-    //    await playSong(randomSong, message);
-    await playSong(random, message, true);
-};
+}
 
 
-// Function to perform voice-related actions (join voice channel if not already connected)
-export const voiceFun = async (message: Message) => {
-    const guildId = message.guild?.id;
-    if (guildId && !connections.has(guildId)) {
-        await joinVoiceC(message);
+
+// -------------------------------------------------------
+// Managers storage
+// -------------------------------------------------------
+
+const managers = new Map<string, GuildVoiceManager>();
+
+export function useVoice(guildId: string): GuildVoiceManager {
+    if (!managers.has(guildId)) {
+        managers.set(guildId, new GuildVoiceManager(guildId));
     }
-    // Additional voice-related actions can be added here
-};
-
-
-export const followMe = async (message: Message) => {
-    // const guildId = message.guild?.id;
-
-    leaveVoiceChannel(message)
-    await joinVoiceC(message);
-
-    // Additional voice-related actions can be added here
-};
-
-
-
-
-// Exporting the maps for potential usage in other modules (if needed)
-export { audioPlayers, connections };
-
+    return managers.get(guildId)!;
+}
