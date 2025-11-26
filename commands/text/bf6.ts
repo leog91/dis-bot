@@ -1,12 +1,45 @@
 import { defineCommand } from "..";
 import fs from "fs/promises";
-import { Message, TextChannel } from "discord.js";
 import path from "path";
+import { Message, TextChannel } from "discord.js";
 import { guilds } from "../../utils/constants";
+import { updateBf6RankFile } from "../../utils/bf6rank";
 
+// Cache config
+const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
+const CACHE_FILE = path.join(process.cwd(), "bf6rank.json");
+type SubCommand =
+    | "kills"
+    | "deaths"
+    | "revives"
+    | "score"
+    | "rank"
+    | "timePlayed";
 
+// Helper: load cached data or refresh if too old
+async function getBF6Data(): Promise<any[]> {
+    try {
+        const raw = await fs.readFile(CACHE_FILE, "utf8");
+        const json = JSON.parse(raw);
 
-type SubCommand = "kills" | "deaths" | "revives" | "score" | "rank" | "timePlayed";
+        if (!json.lastUpdated || !json.data) {
+            throw new Error("Invalid BF6 cache format");
+        }
+
+        const age = Date.now() - json.lastUpdated;
+
+        if (age < CACHE_DURATION) {
+            return json.data; // ✔ use cached data
+        }
+
+    } catch (err) {
+        console.log("Cache missing or invalid. Will fetch fresh data.");
+    }
+
+    // Fetch new data
+    const fresh = await updateBf6RankFile();
+    return fresh;
+}
 
 export default defineCommand({
     name: "bf6",
@@ -22,50 +55,69 @@ export default defineCommand({
             return;
         }
 
-        const subCommand = args[0] as SubCommand;
-        if (!subCommand) {
-            await msg.reply("Te falta el subcommand máquina:\nkills, deaths, revives, score, rank, timePlayed");
+        const sub: SubCommand = args[0] as SubCommand;
+
+        if (!sub) {
+            await msg.reply(
+                "Te falta el subcommand máquina:\n" +
+                "kills, deaths, revives, score, rank, timePlayed"
+            );
             return;
         }
 
         try {
+            // 🔥 This fetches ONLY if older than 6 hours
+            const bfdata = await getBF6Data();
 
-
-            const file = await fs.readFile(path.join(__dirname, "../../bf6rank.json"), "utf-8");
-
-
-
-            const bfdata = JSON.parse(file);
-
-            let sortedData = bfdata;
+            let sorted = bfdata;
             let content = "";
 
-            switch (subCommand) {
+            switch (sub) {
                 case "kills":
-                    content = bfdata.map((p: any) => `${p.platformUserHandle} - ${p.kills} kills`).join("\n");
+                    content = bfdata
+                        .map((p: any) => `${p.platformUserHandle} - ${p.kills} kills`)
+                        .join("\n");
                     break;
+
                 case "deaths":
-                    sortedData = bfdata.sort((a: any, b: any) => b.deaths - a.deaths);
-                    content = sortedData.map((p: any) => `${p.platformUserHandle} - ${p.deaths} deaths`).join("\n");
+                    sorted = [...bfdata].sort((a, b) => b.deaths - a.deaths);
+                    content = sorted
+                        .map((p) => `${p.platformUserHandle} - ${p.deaths} deaths`)
+                        .join("\n");
                     break;
+
                 case "revives":
-                    sortedData = bfdata.sort((a: any, b: any) => b.revives - a.revives);
-                    content = sortedData.map((p: any) => `${p.platformUserHandle} - ${p.revives} revives`).join("\n");
+                    sorted = [...bfdata].sort((a, b) => b.revives - a.revives);
+                    content = sorted
+                        .map((p) => `${p.platformUserHandle} - ${p.revives} revives`)
+                        .join("\n");
                     break;
+
                 case "score":
-                    sortedData = bfdata.sort((a: any, b: any) => b.score - a.score);
-                    content = sortedData.map((p: any) => `${p.platformUserHandle} - ${p.score}`).join("\n");
+                    sorted = [...bfdata].sort((a, b) => b.score - a.score);
+                    content = sorted
+                        .map((p) => `${p.platformUserHandle} - ${p.score} score`)
+                        .join("\n");
                     break;
+
                 case "rank":
-                    sortedData = bfdata.sort((a: any, b: any) => b.careerPlayerRank - a.careerPlayerRank);
-                    content = sortedData.map((p: any) => `${p.platformUserHandle} - Rank ${p.careerPlayerRank}`).join("\n");
+                    sorted = [...bfdata].sort((a, b) => b.careerPlayerRank - a.careerPlayerRank);
+                    content = sorted
+                        .map((p) => `${p.platformUserHandle} - Rank ${p.careerPlayerRank}`)
+                        .join("\n");
                     break;
+
                 case "timePlayed":
-                    sortedData = bfdata.sort((a: any, b: any) => b.timePlayedValue - a.timePlayedValue);
-                    content = sortedData.map((p: any) => `${p.platformUserHandle} - ${p.timePlayedDisplay}`).join("\n");
+                    sorted = [...bfdata].sort((a, b) => b.timePlayedValue - a.timePlayedValue);
+                    content = sorted
+                        .map((p) => `${p.platformUserHandle} - ${p.timePlayedDisplay}`)
+                        .join("\n");
                     break;
+
                 default:
-                    await msg.reply("Unknown subcommand. Available: kills, deaths, revives, score, rank, timePlayed");
+                    await msg.reply(
+                        "Unknown subcommand. Available: kills, deaths, revives, score, rank, timePlayed"
+                    );
                     return;
             }
 
@@ -75,10 +127,10 @@ export default defineCommand({
             }
 
             await msg.reply(content);
-
         } catch (err) {
             console.error(err);
-            await msg.reply("⚠️ Could not read BF6 rank data.");
+            await msg.reply("⚠️ Could not load BF6 rank data.");
         }
     }
 });
+

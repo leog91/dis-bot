@@ -1,122 +1,125 @@
-[
-  {
-    "id": "3194756111",
-    "kills": 13903,
-    "platformUserHandle": "ByteS-puchoprendido",
-    "user": "gd92",
-    "deaths": 5382,
-    "revives": 1719,
-    "score": 5275845,
-    "careerPlayerRank": 159,
-    "timePlayedDisplay": "159h",
-    "timePlayedValue": 572867
-  },
-  {
-    "id": "3211453693",
-    "kills": 11257,
-    "platformUserHandle": "pablocc74",
-    "user": "pablocc74",
-    "deaths": 4953,
-    "revives": 3303,
-    "score": 4836535,
-    "careerPlayerRank": 157,
-    "timePlayedDisplay": "150h",
-    "timePlayedValue": 541575
-  },
-  {
-    "id": "2778059679",
-    "kills": 10032,
-    "platformUserHandle": "InodoroDplastico",
-    "user": "andy",
-    "deaths": 4735,
-    "revives": 870,
-    "score": 3809630,
-    "careerPlayerRank": 129,
-    "timePlayedDisplay": "97h",
-    "timePlayedValue": 352569
-  },
-  {
-    "id": "3113523271",
-    "kills": 6619,
-    "platformUserHandle": "DiegoMave",
-    "user": "Mave",
-    "deaths": 4401,
-    "revives": 1446,
-    "score": 2653140,
-    "careerPlayerRank": 105,
-    "timePlayedDisplay": "90h",
-    "timePlayedValue": 325650
-  },
-  {
-    "id": "3176788207",
-    "kills": 4433,
-    "platformUserHandle": "CapitanSalsaGolf",
-    "user": "salsagolf",
-    "deaths": 2952,
-    "revives": 1044,
-    "score": 1959980,
-    "careerPlayerRank": 90,
-    "timePlayedDisplay": "75h",
-    "timePlayedValue": 270529
-  },
-  {
-    "id": "3120040957",
-    "kills": 3655,
-    "platformUserHandle": "AxelFLoyd",
-    "user": "AxelFLoyd",
-    "deaths": 2123,
-    "revives": 645,
-    "score": 1629150,
-    "careerPlayerRank": 78,
-    "timePlayedDisplay": "55h",
-    "timePlayedValue": 200441
-  },
-  {
-    "id": "3146576220",
-    "kills": 3012,
-    "platformUserHandle": "fedepolito",
-    "user": "fedepolito",
-    "deaths": 2740,
-    "revives": 958,
-    "score": 1466360,
-    "careerPlayerRank": 82,
-    "timePlayedDisplay": "74h",
-    "timePlayedValue": 269365
-  },
-  {
-    "id": "3105796734",
-    "kills": 2164,
-    "platformUserHandle": "Lik4n",
-    "user": "Lik4n",
-    "deaths": 1644,
-    "revives": 1553,
-    "score": 1350385,
-    "careerPlayerRank": 69,
-    "timePlayedDisplay": "49h",
-    "timePlayedValue": 178179
-  },
-  {
-    "id": "3165910038",
-    "kills": 1825,
-    "platformUserHandle": "ByteS-ElGiraldo",
-    "user": "giraldo",
-    "deaths": 1565,
-    "revives": 607,
-    "score": 1007350,
-    "careerPlayerRank": 60,
-    "timePlayedDisplay": "42h",
-    "timePlayedValue": 153126
-  },
-  {
-    "id": "1000350916995",
-    "kills": 1378,
-    "platformUserHandle": "ByteS-PerroRenegado",
-    "user": "perro",
-    "deaths": 2040,
-    "revives": 215,
-    "score": 936035,
-    "careerPlayerRank": 66,
-    "timePlayedDisplay": "44h",
-    "timePlayedValue": 161862
-  }
-]
+{
+  "lastUpdated": 1764178671647,
+  "data": [
+    {
+      "id": "3194756111",
+      "kills": 15079,
+      "platformUserHandle": "ByteS-puchoprendido",
+      "user": "gd92",
+      "deaths": 5846,
+      "revives": 1846,
+      "score": 5752885,
+      "careerPlayerRank": 170,
+      "timePlayedDisplay": "173h",
+      "timePlayedValue": 625703
+    },
+    {
+      "id": "3211453693",
+      "kills": 13252,
+      "platformUserHandle": "pablocc74",
+      "user": "pablocc74",
+      "deaths": 5825,
+      "revives": 3498,
+      "score": 5574995,
+      "careerPlayerRank": 181,
+      "timePlayedDisplay": "174h",
+      "timePlayedValue": 628964
+    },
+    {
+      "id": "2778059679",
+      "kills": 11884,
+      "platformUserHandle": "ElLocoTurbin4",
+      "user": "andy",
+      "deaths": 5604,
+      "revives": 1011,
+      "score": 4531855,
+      "careerPlayerRank": 146,
+      "timePlayedDisplay": "116h",
+      "timePlayedValue": 418550
+    },
+    {
+      "id": "3113523271",
+      "kills": 8054,
+      "platformUserHandle": "DiegoMave",
+      "user": "Mave",
+      "deaths": 5249,
+      "revives": 1685,
+      "score": 3278105,
+      "careerPlayerRank": 123,
+      "timePlayedDisplay": "113h",
+      "timePlayedValue": 408093
+    },
+    {
+      "id": "3176788207",
+      "kills": 4683,
+      "platformUserHandle": "CapitanSalsaGolf",
+      "user": "salsagolf",
+      "deaths": 3147,
+      "revives": 1155,
+      "score": 2055430,
+      "careerPlayerRank": 94,
+      "timePlayedDisplay": "79h",
+      "timePlayedValue": 286016
+    },
+    {
+      "id": "3120040957",
+      "kills": 4375,
+      "platformUserHandle": "AxelFLoyd",
+      "user": "AxelFLoyd",
+      "deaths": 2509,
+      "revives": 735,
+      "score": 1928715,
+      "careerPlayerRank": 86,
+      "timePlayedDisplay": "65h",
+      "timePlayedValue": 236719
+    },
+    {
+      "id": "3146576220",
+      "kills": 3525,
+      "platformUserHandle": "fedepolito",
+      "user": "fedepolito",
+      "deaths": 3194,
+      "revives": 1021,
+      "score": 1730975,
+      "careerPlayerRank": 90,
+      "timePlayedDisplay": "86h",
+      "timePlayedValue": 310882
+    },
+    {
+      "id": "3105796734",
+      "kills": 3196,
+      "platformUserHandle": "Lik4n",
+      "user": "Lik4n",
+      "deaths": 2394,
+      "revives": 2211,
+      "score": 1864275,
+      "careerPlayerRank": 85,
+      "timePlayedDisplay": "72h",
+      "timePlayedValue": 260695
+    },
+    {
+      "id": "3165910038",
+      "kills": 2158,
+      "platformUserHandle": "ByteS-ElGiraldo",
+      "user": "giraldo",
+      "deaths": 1749,
+      "revives": 636,
+      "score": 1138390,
+      "careerPlayerRank": 68,
+      "timePlayedDisplay": "48h",
+      "timePlayedValue": 175600
+    },
+    {
+      "id": "1000350916995",
+      "kills": 2003,
+      "platformUserHandle": "ByteS-PerroRenegado",
+      "user": "perro",
+      "deaths": 2786,
+      "revives": 250,
+      "score": 1242885,
+      "careerPlayerRank": 76,
+      "timePlayedDisplay": "61h",
+      "timePlayedValue": 223003
+    }
+  ]
+}

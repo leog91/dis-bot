@@ -127,12 +127,10 @@ export async function bf6Rank(): Promise<PlayerRank[]> {
         }))
     );
 
-    // Optional JSON output
-    // console.log(JSON.stringify(playerRank, null, 2));
+
 
     return playerRank;
 }
-
 
 export async function updateBf6RankFile() {
     const results: PlayerRank[] = [];
@@ -141,19 +139,19 @@ export async function updateBf6RankFile() {
     for (const player of players) {
         const data = await fetchPlayerData(player);
         results.push(data);
-        await new Promise((res) => setTimeout(res, 1000)); // 1s delay between calls
+        await new Promise((res) => setTimeout(res, 1000));
     }
 
     results.sort((a, b) => b.kills - a.kills);
 
-    await fs.writeFile("./bf6rank.json", JSON.stringify(results, null, 2));
+    const payload = {
+        lastUpdated: Date.now(),
+        data: results
+    };
+
+    await fs.writeFile("./bf6rank.json", JSON.stringify(payload, null, 2));
     console.log("💾 Saved updated player ranks to bf6rank.json");
+
+    return results;
 }
 
-await updateBf6RankFile();
-
-// console.log("check: >>", check, "<<");
-
-
-
-// export { };
