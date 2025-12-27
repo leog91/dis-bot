@@ -5,6 +5,8 @@ import onReady from "./events/ready";
 import { loadCommands } from "./commands/commandLoader";
 import onVoiceStateUpdate from "./events/voiceStateUpdate";
 import onInteraction from "./events/interactionCreate";
+import interactionCreate from "./events/interactionCreate";
+
 
 dotenv.config();
 
@@ -39,7 +41,9 @@ let commands: Map<string, any>;
     client.on("messageCreate", (msg) => onMessage(msg, commands));
     client.on("clientReady", () => onReady(client));
     client.on("voiceStateUpdate", (oldState, newState) => onVoiceStateUpdate(oldState, newState));
-    client.on("interactionCreate", onInteraction);
+    // client.on("interactionCreate", onInteraction);
+    client.on("interactionCreate", interactionCreate);
+
 
 
     await client.login(process.env.BOT_TOKEN);

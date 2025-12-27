@@ -14,7 +14,8 @@ type SubCommand =
     | "revives"
     | "score"
     | "rank"
-    | "timePlayed";
+    | "timePlayed"
+    | "bans";
 
 // Helper: load cached data or refresh if too old
 async function getBF6Data(): Promise<any[]> {
@@ -113,10 +114,13 @@ export default defineCommand({
                         .map((p) => `${p.platformUserHandle} - ${p.timePlayedDisplay}`)
                         .join("\n");
                     break;
+                case "bans":
+                    content = "pablocc74 - 1 ban"
+                    break;
 
                 default:
                     await msg.reply(
-                        "Unknown subcommand. Available: kills, deaths, revives, score, rank, timePlayed"
+                        "Unknown subcommand. Available: kills, deaths, revives, score, rank, timePlayed, bans"
                     );
                     return;
             }

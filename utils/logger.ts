@@ -5,7 +5,7 @@ import chalk from "chalk";
 const LOG_DIR = path.join(__dirname, "../logs");
 if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
 
-export type LogType = "INFO" | "VOICE" | "MESSAGE" | "ERROR" | "BUTTON";
+export type LogType = "INFO" | "VOICE" | "MESSAGE" | "ERROR" | "BUTTON" | "SELECT";
 
 export function logger(server: string, message: string, type: LogType = "INFO") {
     const timestamp = new Date().toISOString();

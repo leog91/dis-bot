@@ -1,3 +1,50 @@
 {
-  "counter": 5
+  "243582757815451649": {
+    "users": {
+      "672822334641537041": {
+        "name": "FreeStuff",
+        "crashes": 2
+      },
+      "158794899083231232": {
+        "name": ".leog",
+        "crashes": 8
+      },
+      "268365185712914442": {
+        "name": "OverBot",
+        "crashes": 3
+      },
+      "184405311681986560": {
+        "name": "FredBoat♪♪",
+        "crashes": 3
+      }
+    }
+  },
+  "185183293552066560": {
+    "users": {
+      "311259706133839873": {
+        "name": "mavelan91",
+        "crashes": 6
+      },
+      "311641134642495489": {
+        "name": "fgiraldi",
+        "crashes": 2
+      },
+      "323306470022053898": {
+        "name": "pabloc74",
+        "crashes": 0
+      },
+      "323954290299371520": {
+        "name": "fedepolito",
+        "crashes": 2
+      },
+      "842768680252997662": {
+        "name": "Battlefield Stats",
+        "crashes": 3
+      },
+      "323263419056783361": {
+        "name": "perro07540",
+        "crashes": 5
+      }
+    }
+  }
 }
