@@ -25,6 +25,11 @@ const players: Player[] = [
 
     { userName: "fedepolito", id: "3146576220" },
     { userName: "mastermind", id: "2740207544" },
+    {
+        userName: "sharpvertex", id: "1001311619103"
+    },
+
+
 
 
 ];

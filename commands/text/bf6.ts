@@ -2,12 +2,15 @@ import { defineCommand } from "..";
 import fs from "fs/promises";
 import path from "path";
 import { Message, TextChannel } from "discord.js";
-import { guilds } from "../../utils/constants";
+import { guilds, users } from "../../utils/constants";
 import { updateBf6RankFile } from "../../utils/bf6rank";
 
-// Cache config
+// ================= CONFIG =================
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
 const CACHE_FILE = path.join(process.cwd(), "bf6rank.json");
+const REFRESH_OWNER_ID = users.leog;
+// ==========================================
+
 type SubCommand =
     | "kills"
     | "deaths"
@@ -15,9 +18,10 @@ type SubCommand =
     | "score"
     | "rank"
     | "timePlayed"
-    | "bans";
+    | "bans"
+    | "refresh";
 
-// Helper: load cached data or refresh if too old
+
 async function getBF6Data(): Promise<any[]> {
     try {
         const raw = await fs.readFile(CACHE_FILE, "utf8");
@@ -30,16 +34,19 @@ async function getBF6Data(): Promise<any[]> {
         const age = Date.now() - json.lastUpdated;
 
         if (age < CACHE_DURATION) {
-            return json.data; // ✔ use cached data
+            return json.data; // ✔ cached
         }
-
-    } catch (err) {
+    } catch {
         console.log("Cache missing or invalid. Will fetch fresh data.");
     }
 
     // Fetch new data
-    const fresh = await updateBf6RankFile();
-    return fresh;
+    return await updateBf6RankFile();
+}
+
+// Force refresh (ignores cache)
+async function refreshBF6Data(): Promise<any[]> {
+    return await updateBf6RankFile();
 }
 
 export default defineCommand({
@@ -56,20 +63,31 @@ export default defineCommand({
             return;
         }
 
-        const sub: SubCommand = args[0] as SubCommand;
+        const sub = args[0] as SubCommand;
 
         if (!sub) {
             await msg.reply(
                 "Te falta el subcommand máquina:\n" +
-                "kills, deaths, revives, score, rank, timePlayed"
+                "kills, deaths, revives, score, rank, timePlayed, bans, refresh"
             );
             return;
         }
 
         try {
-            // 🔥 This fetches ONLY if older than 6 hours
-            const bfdata = await getBF6Data();
+            // 🔐 RESTRICTED REFRESH
+            if (sub === "refresh") {
+                if (msg.author.id !== REFRESH_OWNER_ID) {
+                    await msg.reply("🚫 5 USD to leog");
+                    return;
+                }
 
+                await refreshBF6Data();
+                await msg.reply("force refresh.");
+                return;
+            }
+
+            // Normal cached flow
+            const bfdata = await getBF6Data();
             let sorted = bfdata;
             let content = "";
 
@@ -102,25 +120,30 @@ export default defineCommand({
                     break;
 
                 case "rank":
-                    sorted = [...bfdata].sort((a, b) => b.careerPlayerRank - a.careerPlayerRank);
+                    sorted = [...bfdata].sort(
+                        (a, b) => b.careerPlayerRank - a.careerPlayerRank
+                    );
                     content = sorted
                         .map((p) => `${p.platformUserHandle} - Rank ${p.careerPlayerRank}`)
                         .join("\n");
                     break;
 
                 case "timePlayed":
-                    sorted = [...bfdata].sort((a, b) => b.timePlayedValue - a.timePlayedValue);
+                    sorted = [...bfdata].sort(
+                        (a, b) => b.timePlayedValue - a.timePlayedValue
+                    );
                     content = sorted
                         .map((p) => `${p.platformUserHandle} - ${p.timePlayedDisplay}`)
                         .join("\n");
                     break;
+
                 case "bans":
-                    content = "pablocc74 - 1 ban"
+                    content = "pablocc74 - 1 ban";
                     break;
 
                 default:
                     await msg.reply(
-                        "Unknown subcommand. Available: kills, deaths, revives, score, rank, timePlayed, bans"
+                        "Unknown subcommand. Available: kills, deaths, revives, score, rank, timePlayed, bans, refresh"
                     );
                     return;
             }
@@ -137,4 +160,3 @@ export default defineCommand({
         }
     }
 });
-

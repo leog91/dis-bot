@@ -23,7 +23,7 @@
     "users": {
       "311259706133839873": {
         "name": "mavelan91",
-        "crashes": 6
+        "crashes": 8
       },
       "311641134642495489": {
         "name": "fgiraldi",
@@ -31,11 +31,11 @@
       },
       "323306470022053898": {
         "name": "pabloc74",
-        "crashes": 0
+        "crashes": 1
       },
       "323954290299371520": {
         "name": "fedepolito",
-        "crashes": 2
+        "crashes": 3
       },
       "842768680252997662": {
         "name": "Battlefield Stats",
@@ -44,6 +44,14 @@
       "323263419056783361": {
         "name": "perro07540",
         "crashes": 5
+      },
+      "325448477104537600": {
+        "name": "axelfloyd",
+        "crashes": 1
+      },
+      "120641981486596096": {
+        "name": "lik4n",
+        "crashes": 1
       }
     }
   }
