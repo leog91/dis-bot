@@ -44,7 +44,8 @@ type PlayerRank = {
     score: number;
     careerPlayerRank: number;
     timePlayedDisplay: string;
-    timePlayedValue: number
+    timePlayedValue: number;
+    profileUrl: string;
 
 };
 
@@ -71,6 +72,7 @@ async function fetchPlayerData(player: Player): Promise<PlayerRank> {
         const careerPlayerRank = data.data?.segments?.[0]?.stats?.careerPlayerRank?.value ?? 0;
         const timePlayedDisplay = data.data?.segments?.[0]?.stats?.timePlayed?.displayValue ?? "N/A";
         const timePlayedValue = data.data?.segments?.[0]?.stats?.timePlayed?.value ?? 0;
+        const profileUrl = `https://tracker.gg/bf6/profile/${player.id}/overview`;
 
         const platformUserHandle = data.data?.platformInfo?.platformUserHandle ?? "N/A";
 
@@ -86,7 +88,8 @@ async function fetchPlayerData(player: Player): Promise<PlayerRank> {
             score,
             careerPlayerRank,
             timePlayedDisplay,
-            timePlayedValue
+            timePlayedValue,
+            profileUrl
 
 
 
@@ -103,7 +106,8 @@ async function fetchPlayerData(player: Player): Promise<PlayerRank> {
             score: 0,
             careerPlayerRank: 0,
             timePlayedDisplay: "N/A",
-            timePlayedValue: 0
+            timePlayedValue: 0,
+            profileUrl: "N/A"
         };
     }
 }

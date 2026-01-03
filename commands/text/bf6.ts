@@ -19,7 +19,8 @@ type SubCommand =
     | "rank"
     | "timePlayed"
     | "bans"
-    | "refresh";
+    | "refresh"
+    | "trackergg";
 
 
 async function getBF6Data(): Promise<any[]> {
@@ -68,7 +69,7 @@ export default defineCommand({
         if (!sub) {
             await msg.reply(
                 "Te falta el subcommand máquina:\n" +
-                "kills, deaths, revives, score, rank, timePlayed, bans, refresh"
+                "kills, deaths, revives, score, rank, timePlayed, bans, refresh, trackergg"
             );
             return;
         }
@@ -137,9 +138,23 @@ export default defineCommand({
                         .join("\n");
                     break;
 
+                case "trackergg":
+                    sorted = [...bfdata].sort(
+                        (a, b) => b.timePlayedValue - a.timePlayedValue
+                    );
+                    content = sorted
+                        .map((p) => `[${p.platformUserHandle}](${p.profileUrl})`)
+                        .join("\n");
+                    break;
+
+
                 case "bans":
                     content = "pablocc74 - 1 ban";
                     break;
+
+
+                //await msg.channel.send("[Watch video](https://example.com)");
+
 
                 default:
                     await msg.reply(
