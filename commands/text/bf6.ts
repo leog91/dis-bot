@@ -94,7 +94,8 @@ export default defineCommand({
 
             switch (sub) {
                 case "kills":
-                    content = bfdata
+                    sorted = [...bfdata].sort((a, b) => b.kills - a.kills);
+                    content = sorted
                         .map((p: any) => `${p.platformUserHandle} - ${p.kills} kills`)
                         .join("\n");
                     break;
