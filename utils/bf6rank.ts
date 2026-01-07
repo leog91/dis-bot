@@ -29,6 +29,7 @@ const players: Player[] = [
         userName: "sharpvertex", id: "1001311619103"
     },
 
+    { userName: "leog", id: "2992584642" },
 
 
 
