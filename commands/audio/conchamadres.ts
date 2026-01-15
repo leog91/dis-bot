@@ -3,7 +3,7 @@ import { guilds } from "../../utils/constants";
 import { useVoice } from "../../voice";
 
 export default defineCommand({
-    name: "motor",
+    name: "conchamadres",
     type: "AUDIO",
     description: "",
     permissions: [
@@ -13,6 +13,6 @@ export default defineCommand({
 
     async execute(msg) {
         const voice = useVoice(msg.guild!.id);
-        await voice.play(msg, "motor.ogg");
+        await voice.play(msg, "conchamadres.ogg");
     }
 });
