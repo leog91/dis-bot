@@ -16,9 +16,6 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// -------------------------------------------------------
-// Core DATA
-// -------------------------------------------------------
 
 export class GuildVoiceManager {
     guildId: string;
@@ -29,9 +26,8 @@ export class GuildVoiceManager {
         this.guildId = guildId;
     }
 
-    // ---------------------------------------------------
+
     // Ensure connection + player exist
-    // ---------------------------------------------------
     async ensureReady(msg: Message): Promise<AudioPlayer> {
         const channel = msg.member?.voice.channel;
         if (!channel) {
@@ -54,9 +50,8 @@ export class GuildVoiceManager {
         return this.player;
     }
 
-    // ---------------------------------------------------
+
     // Join explicitly
-    // ---------------------------------------------------
     async join(msg: Message) {
         const channel = msg.member?.voice.channel;
         if (!channel) return msg.reply("❌ You must be in a voice channel.");
@@ -77,9 +72,7 @@ export class GuildVoiceManager {
         msg.reply(`🔊 Joined **${channel.name}**.`);
     }
 
-    // ---------------------------------------------------
     // Leave & cleanup
-    // ---------------------------------------------------
     async leave(msg?: Message | Guild) {
         if (!this.connection) {
             if (msg instanceof Message) msg.reply("🚫 Not in a voice channel.");
@@ -93,9 +86,8 @@ export class GuildVoiceManager {
         if (msg instanceof Message) msg.reply("👋 Disconnected from voice.");
     }
 
-    // ---------------------------------------------------
+
     // Play audio (mp3 / ogg supported)
-    // ---------------------------------------------------
     async play(msg: Message, filename: string, isRandom = false) {
         let player: AudioPlayer;
 
@@ -159,9 +151,7 @@ export class GuildVoiceManager {
     }
 }
 
-// -------------------------------------------------------
 // Managers storage
-// -------------------------------------------------------
 
 const managers = new Map<string, GuildVoiceManager>();
 
