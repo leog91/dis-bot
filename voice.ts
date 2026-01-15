@@ -1,4 +1,3 @@
-
 import {
     joinVoiceChannel,
     createAudioPlayer,
@@ -7,6 +6,7 @@ import {
     AudioResource,
     AudioPlayerStatus,
     VoiceConnection,
+    StreamType,
 } from "@discordjs/voice";
 
 import { Message, Guild } from "discord.js";
@@ -38,7 +38,6 @@ export class GuildVoiceManager {
             throw new Error("User is not in a voice channel.");
         }
 
-        // Create connection if missing
         if (!this.connection) {
             this.connection = joinVoiceChannel({
                 channelId: channel.id,
@@ -47,7 +46,6 @@ export class GuildVoiceManager {
             });
         }
 
-        // Create player if missing
         if (!this.player) {
             this.player = createAudioPlayer();
             this.connection.subscribe(this.player);
@@ -96,7 +94,7 @@ export class GuildVoiceManager {
     }
 
     // ---------------------------------------------------
-    // Play audio
+    // Play audio (mp3 / ogg supported)
     // ---------------------------------------------------
     async play(msg: Message, filename: string, isRandom = false) {
         let player: AudioPlayer;
@@ -107,17 +105,28 @@ export class GuildVoiceManager {
             return msg.reply("⚠️ " + err.message);
         }
 
+        const hasExtension = /\.[a-z0-9]+$/i.test(filename);
+
         const filePath = isRandom
             ? join(__dirname, `./assets/audio/age/${filename}`)
-            : join(__dirname, `./assets/audio/${filename}.mp3`);
+            : join(
+                __dirname,
+                `./assets/audio/${hasExtension ? filename : `${filename}.mp3`}`
+            );
 
-        const resource: AudioResource<any> = createAudioResource(filePath);
+        const inputType = filePath.endsWith(".ogg")
+            ? StreamType.OggOpus
+            : undefined;
+
+        const resource: AudioResource<any> = createAudioResource(filePath, {
+            inputType,
+        });
 
         player.removeAllListeners();
         player.play(resource);
 
         player.on(AudioPlayerStatus.Playing, () => {
-            // console.log(`Now playing: ${filename}`);
+            // console.log(`Now playing: ${filePath}`);
         });
 
         player.on("error", (err) => {
@@ -149,8 +158,6 @@ export class GuildVoiceManager {
         await this.join(msg);
     }
 }
-
-
 
 // -------------------------------------------------------
 // Managers storage
