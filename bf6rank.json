@@ -1,30 +1,30 @@
 {
-  "lastUpdated": 1768454190463,
+  "lastUpdated": 1768612550157,
   "data": [
     {
       "id": "3194756111",
-      "kills": 25083,
+      "kills": 25100,
       "platformUserHandle": "ByteS-elaleman",
       "user": "gd92",
-      "deaths": 9498,
-      "revives": 2889,
-      "score": 9524480,
+      "deaths": 9511,
+      "revives": 2893,
+      "score": 9531390,
       "careerPlayerRank": 263,
       "timePlayedDisplay": "291h",
-      "timePlayedValue": 1049968,
+      "timePlayedValue": 1050781,
       "profileUrl": "https://tracker.gg/bf6/profile/3194756111/overview"
     },
     {
       "id": "3211453693",
-      "kills": 22234,
+      "kills": 22526,
       "platformUserHandle": "ByteS-Pabloc74",
       "user": "pablocc74",
-      "deaths": 9704,
-      "revives": 4736,
-      "score": 8826075,
-      "careerPlayerRank": 276,
-      "timePlayedDisplay": "278h",
-      "timePlayedValue": 1004240,
+      "deaths": 9819,
+      "revives": 4789,
+      "score": 8921415,
+      "careerPlayerRank": 279,
+      "timePlayedDisplay": "282h",
+      "timePlayedValue": 1016247,
       "profileUrl": "https://tracker.gg/bf6/profile/3211453693/overview"
     },
     {
@@ -54,16 +54,29 @@
       "profileUrl": "https://tracker.gg/bf6/profile/3113523271/overview"
     },
     {
+      "id": "3105796734",
+      "kills": 7557,
+      "platformUserHandle": "Lik4n",
+      "user": "Lik4n",
+      "deaths": 5161,
+      "revives": 5472,
+      "score": 4100440,
+      "careerPlayerRank": 157,
+      "timePlayedDisplay": "160h",
+      "timePlayedValue": 577992,
+      "profileUrl": "https://tracker.gg/bf6/profile/3105796734/overview"
+    },
+    {
       "id": "3146576220",
-      "kills": 6875,
+      "kills": 6996,
       "platformUserHandle": "fedepolito",
       "user": "fedepolito",
-      "deaths": 6098,
-      "revives": 1577,
-      "score": 3256340,
-      "careerPlayerRank": 139,
-      "timePlayedDisplay": "156h",
-      "timePlayedValue": 563958,
+      "deaths": 6204,
+      "revives": 1613,
+      "score": 3314850,
+      "careerPlayerRank": 141,
+      "timePlayedDisplay": "159h",
+      "timePlayedValue": 573169,
       "profileUrl": "https://tracker.gg/bf6/profile/3146576220/overview"
     },
     {
@@ -133,15 +146,15 @@
     },
     {
       "id": "2992584642",
-      "kills": 1282,
+      "kills": 1393,
       "platformUserHandle": "[BaitS] leog [Bot]",
       "user": "leog",
-      "deaths": 1165,
-      "revives": 154,
-      "score": 641040,
-      "careerPlayerRank": 48,
-      "timePlayedDisplay": "30h",
-      "timePlayedValue": 109090,
+      "deaths": 1267,
+      "revives": 173,
+      "score": 698325,
+      "careerPlayerRank": 51,
+      "timePlayedDisplay": "32h",
+      "timePlayedValue": 118661,
       "profileUrl": "https://tracker.gg/bf6/profile/2992584642/overview"
     },
     {
@@ -152,23 +165,10 @@
       "deaths": 699,
       "revives": 297,
       "score": 326255,
-      "careerPlayerRank": 53,
+      "careerPlayerRank": 55,
       "timePlayedDisplay": "17h",
       "timePlayedValue": 62948,
       "profileUrl": "https://tracker.gg/bf6/profile/1001311619103/overview"
-    },
-    {
-      "id": "3105796734",
-      "kills": 0,
-      "platformUserHandle": "N/A",
-      "user": "Lik4n",
-      "deaths": 0,
-      "revives": 0,
-      "score": 0,
-      "careerPlayerRank": 0,
-      "timePlayedDisplay": "N/A",
-      "timePlayedValue": 0,
-      "profileUrl": "https://tracker.gg/bf6/profile/3105796734/overview"
     }
   ]
 }
