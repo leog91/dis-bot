@@ -1,9 +1,11 @@
 import { defineCommand } from "..";
-import fs from "fs/promises";
 import path from "path";
 import { Message, TextChannel } from "discord.js";
 import { guilds, users } from "../../utils/constants";
 import { updateBf6RankFile } from "../../utils/bf6rank";
+import { db } from "../../db/index";
+import { bf6Scrapes, bf6Players } from "../../db/schema";
+import { desc, eq, sql } from "drizzle-orm";
 
 // ================= CONFIG =================
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
@@ -25,20 +27,55 @@ type SubCommand =
 
 async function getBF6Data(): Promise<any[]> {
     try {
-        const raw = await fs.readFile(CACHE_FILE, "utf8");
-        const json = JSON.parse(raw);
+        // Query latest scrape for each player
+        // We use a subquery approach to get the Max ID (latest) for each player
+        const latestScrapes = await db.select({
+            id: bf6Players.id,
+            user: bf6Players.user, // Use the stored user name from metadata
+            platformUserHandle: bf6Players.platformUserHandle,
+            profileUrl: bf6Players.profileUrl,
+            kills: bf6Scrapes.kills,
+            deaths: bf6Scrapes.deaths,
+            revives: bf6Scrapes.revives,
+            score: bf6Scrapes.score,
+            careerPlayerRank: bf6Scrapes.careerPlayerRank,
+            timePlayedDisplay: bf6Scrapes.timePlayedDisplay,
+            timePlayedValue: bf6Scrapes.timePlayedValue,
+            scrapedAt: bf6Scrapes.scrapedAt,
+        })
+            .from(bf6Scrapes)
+            .innerJoin(bf6Players, eq(bf6Scrapes.playerId, bf6Players.id))
+            .where(
+                sql`(${bf6Scrapes.id}) IN (
+                SELECT MAX(${bf6Scrapes.id})
+                FROM ${bf6Scrapes}
+                GROUP BY ${bf6Scrapes.playerId}
+            )`
+            );
 
-        if (!json.lastUpdated || !json.data) {
-            throw new Error("Invalid BF6 cache format");
+        if (!latestScrapes.length) {
+            console.log("No DB data found. Will fetch fresh data.");
+            return await updateBf6RankFile();
         }
 
-        const age = Date.now() - json.lastUpdated;
+        // Check if data is stale (using the Cache Duration logic)
+        // If the newest record is older than CACHE_DURATION, refresh
+        // Find the most recent timestamp in the entire set
+        const newestScrapeTime = latestScrapes.reduce((max, curr) =>
+            curr.scrapedAt.getTime() > max ? curr.scrapedAt.getTime() : max, 0
+        );
+        const age = Date.now() - newestScrapeTime;
 
         if (age < CACHE_DURATION) {
-            return json.data; // ✔ cached
+            return latestScrapes;
+        } else {
+            console.log("DB data stale. Will fetch fresh data.");
+            return await updateBf6RankFile();
         }
-    } catch {
-        console.log("Cache missing or invalid. Will fetch fresh data.");
+
+    } catch (err) {
+        console.error("DB Error:", err);
+        console.log("Fallback to direct fetch.");
     }
 
     // Fetch new data

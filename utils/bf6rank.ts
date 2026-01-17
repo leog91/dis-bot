@@ -2,6 +2,9 @@
 
 
 import fs from "fs/promises";
+import { db } from "../db/index";
+import { bf6Players, bf6Scrapes } from "../db/schema";
+import { eq } from "drizzle-orm";
 
 type Player = {
     userName: string;
@@ -162,6 +165,48 @@ export async function updateBf6RankFile() {
 
     await fs.writeFile("./bf6rank.json", JSON.stringify(payload, null, 2));
     console.log("💾 Saved updated player ranks to bf6rank.json");
+
+    // DB Persistence
+    try {
+        console.log("💾 Saving to database...");
+        const scrapedAt = new Date(); // Use same timestamp for all records in this batch
+
+        for (const p of results) {
+            // 1. Upsert Metadata
+            const existingPlayer = await db.select().from(bf6Players).where(eq(bf6Players.id, p.id)).get();
+            if (existingPlayer) {
+                await db.update(bf6Players).set({
+                    platformUserHandle: p.platformUserHandle,
+                    user: p.user,
+                    profileUrl: p.profileUrl,
+                    updatedAt: new Date(),
+                }).where(eq(bf6Players.id, p.id));
+            } else {
+                await db.insert(bf6Players).values({
+                    id: p.id,
+                    platformUserHandle: p.platformUserHandle,
+                    user: p.user,
+                    profileUrl: p.profileUrl,
+                });
+            }
+
+            // 2. Insert Scrape
+            await db.insert(bf6Scrapes).values({
+                playerId: p.id,
+                kills: p.kills,
+                deaths: p.deaths,
+                revives: p.revives,
+                score: p.score,
+                careerPlayerRank: p.careerPlayerRank,
+                timePlayedDisplay: p.timePlayedDisplay,
+                timePlayedValue: p.timePlayedValue,
+                scrapedAt: scrapedAt
+            });
+        }
+        console.log("✅ Database updated.");
+    } catch (error) {
+        console.error("❌ Failed to update database:", error);
+    }
 
     return results;
 }
