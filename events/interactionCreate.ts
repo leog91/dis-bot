@@ -50,14 +50,14 @@ export default async function interactionCreate(interaction: Interaction) {
         const userId = interaction.values[0];
         selectedUser.set(interaction.message.id, userId);
 
-
-
+        // Fetch the selected user's info
+        const selectedUserObj = await interaction.client.users.fetch(userId);
 
         // Log the selection
         const user = interaction.user;
         logger(
             server,
-            `${user.tag} selected user: ${userId}`,
+            `${user.tag} selected user: ${selectedUserObj.username} (${userId})`,
             "SELECT"
         );
 
