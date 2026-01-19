@@ -1,5 +1,5 @@
 {
-  "lastUpdated": 1768797632019,
+  "lastUpdated": 1768862901471,
   "data": [
     {
       "id": "3194756111",
@@ -29,15 +29,15 @@
     },
     {
       "id": "2778059679",
-      "kills": 20223,
+      "kills": 20288,
       "platformUserHandle": "150deJamon",
       "user": "andy",
-      "deaths": 9089,
+      "deaths": 9110,
       "revives": 1495,
-      "score": 7442385,
-      "careerPlayerRank": 224,
+      "score": 7462570,
+      "careerPlayerRank": 225,
       "timePlayedDisplay": "191h",
-      "timePlayedValue": 688786,
+      "timePlayedValue": 691198,
       "profileUrl": "https://tracker.gg/bf6/profile/2778059679/overview"
     },
     {

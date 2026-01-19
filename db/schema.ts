@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 
 export const bf6Players = sqliteTable('bf6_players', {
     id: text('id').primaryKey(), // Using the ID from tracker.gg as the primary key
@@ -20,4 +20,9 @@ export const bf6Scrapes = sqliteTable('bf6_scrapes', {
     timePlayedDisplay: text('time_played_display').notNull(),
     timePlayedValue: integer('time_played_value').notNull(),
     scrapedAt: integer('scraped_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-});
+}, (table) => ({
+    // Composite index for efficient player + date queries
+    playerDateIdx: index('player_date_idx').on(table.playerId, table.scrapedAt),
+    // Index for date-based queries
+    scrapedAtIdx: index('scraped_at_idx').on(table.scrapedAt),
+}));

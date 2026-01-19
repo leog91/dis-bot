@@ -69,17 +69,13 @@ async function getProgressData(daysInfo: string): Promise<{ data: any[], timefra
     const currentData = await getLatestScrapes();
     if (!currentData.length) return null;
 
-    // 3. Fetch Historical Data
-    // "Growth in last 7 days" = (Current) - (Data 7 days ago).
-    // So we need data <= targetDate.
+    // 3. Fetch Historical Data (OPTIMIZED with FALLBACK)
+    // Strategy: We need to find a baseline for each player.
+    // Priority 1: The most recent scrape <= targetDate (True history).
+    // Priority 2: The oldest scrape available (if tracking started < days ago).
 
-    // 3. Fetch Historical Data
-    // Strategy: Fetch all scrapes, then find the best baseline for each player in JavaScript.
-    // Priority 1: The most recent record that is <= targetDate (True history).
-    // Priority 2: The oldest record available (if tracking started < days ago).
-
-    // Fetch all scrapes for all players
-    const allScrapes = await db.select({
+    // Fetch scrapes <= targetDate (for historical comparison)
+    const historicalScrapes = await db.select({
         playerId: bf6Scrapes.playerId,
         kills: bf6Scrapes.kills,
         deaths: bf6Scrapes.deaths,
@@ -89,54 +85,78 @@ async function getProgressData(daysInfo: string): Promise<{ data: any[], timefra
         scrapedAt: bf6Scrapes.scrapedAt,
     })
         .from(bf6Scrapes)
+        .where(lte(bf6Scrapes.scrapedAt, targetDate))
         .orderBy(bf6Scrapes.scrapedAt);
 
-    // Group by player
-    const playerScrapesMap = new Map<string, typeof allScrapes>();
-    allScrapes.forEach(scrape => {
-        if (!playerScrapesMap.has(scrape.playerId)) {
-            playerScrapesMap.set(scrape.playerId, []);
+    // Get the oldest scrape for each player (fallback for new players)
+    const oldestScrapesSubquery = db.select({
+        playerId: bf6Scrapes.playerId,
+        minDate: sql`MIN(${bf6Scrapes.scrapedAt})`.as('minDate')
+    })
+        .from(bf6Scrapes)
+        .groupBy(bf6Scrapes.playerId)
+        .as('oldest');
+
+    const oldestScrapes = await db.select({
+        playerId: bf6Scrapes.playerId,
+        kills: bf6Scrapes.kills,
+        deaths: bf6Scrapes.deaths,
+        revives: bf6Scrapes.revives,
+        score: bf6Scrapes.score,
+        timePlayedValue: bf6Scrapes.timePlayedValue,
+        scrapedAt: bf6Scrapes.scrapedAt,
+    })
+        .from(bf6Scrapes)
+        .innerJoin(
+            oldestScrapesSubquery,
+            and(
+                eq(bf6Scrapes.playerId, oldestScrapesSubquery.playerId),
+                eq(bf6Scrapes.scrapedAt, oldestScrapesSubquery.minDate)
+            )
+        );
+
+    // Group historical scrapes by player
+    const historicalMap = new Map<string, typeof historicalScrapes>();
+    historicalScrapes.forEach(scrape => {
+        if (!historicalMap.has(scrape.playerId)) {
+            historicalMap.set(scrape.playerId, []);
         }
-        playerScrapesMap.get(scrape.playerId)!.push(scrape);
+        historicalMap.get(scrape.playerId)!.push(scrape);
     });
 
-    // 4. Calculate Diffs - Find baseline for each player
+    // Create oldest scrapes map
+    const oldestMap = new Map();
+    oldestScrapes.forEach(scrape => {
+        oldestMap.set(scrape.playerId, scrape);
+    });
+
+    // 4. Find the best baseline for each player
     const baselineMap = new Map();
 
     currentData.forEach(curr => {
-        const scrapes = playerScrapesMap.get(curr.id);
-        if (!scrapes || scrapes.length === 0) {
-            return; // No history at all
-        }
+        const historical = historicalMap.get(curr.id);
 
-        // Find the best baseline:
-        // 1. Try to find the most recent scrape <= targetDate
-        let baseline = null;
-        for (let i = scrapes.length - 1; i >= 0; i--) {
-            if (scrapes[i].scrapedAt <= targetDate) {
-                baseline = scrapes[i];
-                break;
+        if (historical && historical.length > 0) {
+            // Priority 1: Use the most recent historical scrape <= targetDate
+            const baseline = historical[historical.length - 1];
+            baselineMap.set(curr.id, baseline);
+        } else {
+            // Priority 2: Use the oldest scrape available (fallback)
+            const oldest = oldestMap.get(curr.id);
+            if (oldest) {
+                baselineMap.set(curr.id, oldest);
             }
         }
-
-        // 2. If no scrape <= targetDate, use the oldest scrape (fallback)
-        if (!baseline) {
-            baseline = scrapes[0];
-        }
-
-        baselineMap.set(curr.id, baseline);
     });
 
     const progress = currentData.map(curr => {
         const past = baselineMap.get(curr.id);
         if (!past) {
-            // Should strictly not happen if logic is correct and DB consistent, 
-            // unless the "current" user has NO rows in scrapes table (which relies on innerJoin so unlikely)
-            // or dates mismatch due to ms precision?
+            // No historical data at all - player is brand new
             return { ...curr, kills: 0, deaths: 0, revives: 0, score: 0, timePlayedValue: 0, isNew: true };
         }
 
-        // If the 'past' record is essentially the same as 'curr' (e.g. only 1 scrape ever), diffs will be 0.
+        // Calculate the difference between current and baseline
         return {
             ...curr,
             kills: curr.kills - past.kills,
