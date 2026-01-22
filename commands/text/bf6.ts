@@ -49,9 +49,12 @@ export default defineCommand({
                     await msg.reply("🚫 5 USD to leog");
                     return;
                 }
+                const { durationMs } = await refreshBF6Data();
+                await msg.reply(
+                    `force refresh completed in ${durationMs.toFixed(0)} ms ) \n https://is.gd/1Cm9Ta`
+                );
 
-                await refreshBF6Data();
-                await msg.reply("force refresh.");
+                //https://x.com/cto_junior/status/2014353665331777728
                 return;
             }
 

@@ -38,7 +38,7 @@ const players: Player[] = [
 
 ];
 
-type PlayerRank = {
+export type PlayerRank = {
     id: string;
     kills: number;
     deaths: number

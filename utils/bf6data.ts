@@ -1,7 +1,7 @@
 import { db } from "../db/index";
 import { bf6Scrapes, bf6Players } from "../db/schema";
 import { desc, eq, sql, and, lt, gt, inArray, lte } from "drizzle-orm";
-import { updateBf6RankFile } from "./bf6rank";
+import { PlayerRank, updateBf6RankFile } from "./bf6rank";
 
 // ================= CONFIG =================
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
@@ -195,6 +195,16 @@ export async function getBF6Data(): Promise<any[]> {
 /**
  * Force refresh BF6 data (ignores cache)
  */
-export async function refreshBF6Data(): Promise<any[]> {
-    return await updateBf6RankFile();
+export async function refreshBF6Data(): Promise<{
+    data: PlayerRank[];
+    durationMs: number;
+}> {
+    const start = performance.now();
+    const data = await updateBf6RankFile();
+    const end = performance.now();
+
+    return {
+        data,
+        durationMs: end - start,
+    };
 }
