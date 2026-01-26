@@ -1,3 +1,9 @@
+
+import googleTTS from "google-tts-api";
+import { randomUUID } from "crypto";
+import fs from "fs";
+
+
 import {
     joinVoiceChannel,
     createAudioPlayer,
@@ -8,13 +14,14 @@ import {
     VoiceConnection,
     StreamType,
 } from "@discordjs/voice";
-
+import fetch from "node-fetch";
 import { Message, Guild } from "discord.js";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
 
 
 export class GuildVoiceManager {
@@ -50,6 +57,44 @@ export class GuildVoiceManager {
         return this.player;
     }
 
+
+    async playTTS(msg: Message, text: string, lang = "en") {
+        let player;
+
+        try {
+            player = await this.ensureReady(msg);
+        } catch (err: any) {
+            await msg.reply("⚠️ " + err.message);
+            return;
+        }
+
+        const url = googleTTS.getAudioUrl(text, {
+            lang,
+            slow: false,
+            host: "https://translate.google.com",
+        });
+
+        const tempFile = join(__dirname, `./tts-${randomUUID()}.mp3`);
+
+        const res = await fetch(url);
+        const buffer = Buffer.from(await res.arrayBuffer());
+        fs.writeFileSync(tempFile, buffer);
+
+        const resource = createAudioResource(tempFile);
+
+        player.removeAllListeners();
+        player.play(resource);
+
+        player.once(AudioPlayerStatus.Idle, () => {
+            fs.unlink(tempFile, () => { });
+        });
+
+        player.on("error", (err) => {
+            console.error("TTS error:", err);
+            fs.unlink(tempFile, () => { });
+            msg.reply(" TTS playback failed.");
+        });
+    }
 
     // Join explicitly
     async join(msg: Message) {
@@ -150,6 +195,9 @@ export class GuildVoiceManager {
         await this.join(msg);
     }
 }
+
+
+
 
 // Managers storage
 
