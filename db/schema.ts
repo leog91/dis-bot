@@ -26,3 +26,15 @@ export const bf6Scrapes = sqliteTable('bf6_scrapes', {
     // Index for date-based queries
     scrapedAtIdx: index('scraped_at_idx').on(table.scrapedAt),
 }));
+
+export const pins = sqliteTable('pins', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    serverId: text('server_id').notNull(),
+    url: text('url').notNull(),
+    name: text('name'),
+    description: text('description'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+    tags: text('tags'),
+    isArchived: integer('is_archived', { mode: 'boolean' }).notNull().default(false),
+    userId: text('user_id').notNull(),
+});
