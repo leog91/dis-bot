@@ -53,7 +53,7 @@ export type PlayerRank = {
 
 };
 
-async function fetchPlayerData(player: Player): Promise<PlayerRank> {
+async function fetchPlayerData(player: Player): Promise<PlayerRank | null> {
     try {
 
         const url = `https://api.tracker.gg/api/v2/bf6/standard/profile/ign/${player.id}`
@@ -64,9 +64,12 @@ async function fetchPlayerData(player: Player): Promise<PlayerRank> {
                 "Accept-Language": "en-US,en;q=0.9",
             },
         });
-        // const response = await fetch(
-        //     `https://api.tracker.gg/api/v2/bf6/standard/profile/ign/${player.id}`
-        // );
+
+        if (!response.ok) {
+            console.error(`❌ Failed to fetch ${player.userName}: Status ${response.status}`);
+            return null;
+        }
+
         const data = await response.json();
 
         const kills = data.data?.segments?.[0]?.stats?.playerKills?.value ?? 0;
@@ -94,25 +97,10 @@ async function fetchPlayerData(player: Player): Promise<PlayerRank> {
             timePlayedDisplay,
             timePlayedValue,
             profileUrl
-
-
-
         };
     } catch (error) {
         console.error(`❌ Failed to fetch ${player.userName}:`, error);
-        return {
-            id: player.id,
-            kills: 0,
-            platformUserHandle: "N/A",
-            user: player.userName,
-            deaths: 0,
-            revives: 0,
-            score: 0,
-            careerPlayerRank: 0,
-            timePlayedDisplay: "N/A",
-            timePlayedValue: 0,
-            profileUrl: "N/A"
-        };
+        return null;
     }
 }
 
@@ -124,7 +112,9 @@ export async function bf6Rank(): Promise<PlayerRank[]> {
     // Sequential fetching to avoid rate limits
     for (const player of players) {
         const data = await fetchPlayerData(player);
-        playerRank.push(data);
+        if (data) {
+            playerRank.push(data);
+        }
         await delay(1000); // 
     }
 
@@ -141,8 +131,6 @@ export async function bf6Rank(): Promise<PlayerRank[]> {
         }))
     );
 
-
-
     return playerRank;
 }
 
@@ -152,8 +140,15 @@ export async function updateBf6RankFile() {
     console.log("Fetching player data sequentially...");
     for (const player of players) {
         const data = await fetchPlayerData(player);
-        results.push(data);
+        if (data) {
+            results.push(data);
+        }
         await new Promise((res) => setTimeout(res, 1000));
+    }
+
+    if (results.length === 0) {
+        console.error("❌ No data fetched successfully. Aborting save.");
+        return [];
     }
 
     results.sort((a, b) => b.kills - a.kills);
