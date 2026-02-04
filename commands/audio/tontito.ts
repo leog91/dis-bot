@@ -13,6 +13,6 @@ export default defineCommand({
 
     async execute(msg) {
         const voice = useVoice(msg.guild!.id);
-        await voice.play(msg, "tontito");
+        await voice.play(msg, "salsa/tontito");
     }
 });

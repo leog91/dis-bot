@@ -1,5 +1,5 @@
 {
-  "lastUpdated": 1770191717904,
+  "lastUpdated": 1770239100129,
   "data": [
     {
       "id": "3211453693",
@@ -68,15 +68,15 @@
     },
     {
       "id": "3146576220",
-      "kills": 7841,
+      "kills": 7929,
       "platformUserHandle": "fedepolito",
       "user": "fedepolito",
-      "deaths": 6959,
-      "revives": 1857,
-      "score": 3734695,
-      "careerPlayerRank": 154,
+      "deaths": 7022,
+      "revives": 1858,
+      "score": 3748830,
+      "careerPlayerRank": 155,
       "timePlayedDisplay": "178h",
-      "timePlayedValue": 640833,
+      "timePlayedValue": 643466,
       "profileUrl": "https://tracker.gg/bf6/profile/3146576220/overview"
     },
     {
@@ -94,15 +94,15 @@
     },
     {
       "id": "3176788207",
-      "kills": 6879,
+      "kills": 6941,
       "platformUserHandle": "CapitanSalsaGolf",
       "user": "salsagolf",
-      "deaths": 4656,
-      "revives": 1405,
-      "score": 2934890,
-      "careerPlayerRank": 122,
-      "timePlayedDisplay": "114h",
-      "timePlayedValue": 412253,
+      "deaths": 4695,
+      "revives": 1408,
+      "score": 2987200,
+      "careerPlayerRank": 123,
+      "timePlayedDisplay": "115h",
+      "timePlayedValue": 416747,
       "profileUrl": "https://tracker.gg/bf6/profile/3176788207/overview"
     },
     {

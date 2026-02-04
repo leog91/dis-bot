@@ -16,12 +16,86 @@ import {
 } from "@discordjs/voice";
 import fetch from "node-fetch";
 import { Message, Guild } from "discord.js";
-import { join, dirname } from "path";
+import { join, dirname, basename } from "path";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+const AUDIO_ROOT = join(__dirname, "assets", "audio");
+
+const hasExtension = (filename: string): boolean => /\.[a-z0-9]+$/i.test(filename);
+
+const listAudioFiles = (folderRel: string): string[] => {
+    const folderPath = join(AUDIO_ROOT, folderRel);
+    if (!fs.existsSync(folderPath)) return [];
+    const entries = fs.readdirSync(folderPath, { withFileTypes: true });
+    return entries
+        .filter((entry) => entry.isFile())
+        .map((entry) => join(folderRel, entry.name));
+};
+
+const findByBasename = (name: string): string | null => {
+    const matches: string[] = [];
+
+    const walk = (dir: string) => {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+            const full = join(dir, entry.name);
+            if (entry.isDirectory()) {
+                walk(full);
+                continue;
+            }
+            const base = basename(full);
+            const baseNoExt = base.replace(/\.[a-z0-9]+$/i, "");
+            if (base === name || baseNoExt === name) {
+                matches.push(full);
+            }
+        }
+    };
+
+    walk(AUDIO_ROOT);
+
+    if (matches.length === 0) return null;
+    matches.sort();
+
+    if (matches.length > 1) {
+        console.warn(`Multiple audio files match "${name}". Using: ${matches[0]}`);
+    }
+
+    return matches[0];
+};
+
+const resolveAudioPath = (input: string): string | null => {
+    const normalized = input.replace(/\\/g, "/").trim();
+
+    if (normalized.includes("/")) {
+        if (hasExtension(normalized)) {
+            const direct = join(AUDIO_ROOT, normalized);
+            return fs.existsSync(direct) ? direct : null;
+        }
+
+        const candidates = [".mp3", ".ogg", ".wav"].map((ext) =>
+            join(AUDIO_ROOT, `${normalized}${ext}`)
+        );
+
+        const found = candidates.find((candidate) => fs.existsSync(candidate));
+        if (found) return found;
+    } else {
+        const directCandidate = hasExtension(normalized)
+            ? join(AUDIO_ROOT, normalized)
+            : join(AUDIO_ROOT, `${normalized}.mp3`);
+
+        if (fs.existsSync(directCandidate)) return directCandidate;
+    }
+
+    if (!hasExtension(normalized)) {
+        const found = findByBasename(normalized);
+        if (found) return found;
+    }
+
+    return null;
+};
 
 
 export class GuildVoiceManager {
@@ -142,14 +216,13 @@ export class GuildVoiceManager {
             return msg.reply("⚠️ " + err.message);
         }
 
-        const hasExtension = /\.[a-z0-9]+$/i.test(filename);
-
         const filePath = isRandom
-            ? join(__dirname, `./assets/audio/age/${filename}`)
-            : join(
-                __dirname,
-                `./assets/audio/${hasExtension ? filename : `${filename}.mp3`}`
-            );
+            ? join(AUDIO_ROOT, "age", filename)
+            : resolveAudioPath(filename);
+
+        if (!filePath) {
+            return msg.reply("⚠️ Audio file not found.");
+        }
 
         const inputType = filePath.endsWith(".ogg")
             ? StreamType.OggOpus
@@ -170,6 +243,17 @@ export class GuildVoiceManager {
             console.error(err);
             msg.reply("⚠️ Audio playback error.");
         });
+    }
+
+    async playRandom(msg: Message, folder: string) {
+        const files = listAudioFiles(folder);
+        if (files.length === 0) {
+            await msg.reply("⚠️ No audio files found in that folder.");
+            return;
+        }
+
+        const randomFile = files[Math.floor(Math.random() * files.length)];
+        await this.play(msg, randomFile);
     }
 
     pause(msg: Message) {
