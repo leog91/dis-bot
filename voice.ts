@@ -102,6 +102,7 @@ export class GuildVoiceManager {
     guildId: string;
     connection: VoiceConnection | null = null;
     player: AudioPlayer | null = null;
+    randomQueues = new Map<string, string[]>();
 
     constructor(guildId: string) {
         this.guildId = guildId;
@@ -254,6 +255,37 @@ export class GuildVoiceManager {
 
         const randomFile = files[Math.floor(Math.random() * files.length)];
         await this.play(msg, randomFile);
+    }
+
+    async playRandomNoRepeat(msg: Message, folder: string): Promise<string | null> {
+        const nextFile = this.nextFromQueue(folder);
+        if (!nextFile) {
+            await msg.reply("⚠️ No audio files found in that folder.");
+            return null;
+        }
+
+        await this.play(msg, nextFile);
+        return nextFile;
+    }
+
+    private nextFromQueue(folder: string): string | null {
+        let queue = this.randomQueues.get(folder);
+
+        if (!queue || queue.length === 0) {
+            const files = listAudioFiles(folder);
+            if (files.length === 0) return null;
+
+            const shuffled = [...files];
+            for (let i = shuffled.length - 1; i > 0; i -= 1) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+
+            queue = shuffled;
+            this.randomQueues.set(folder, queue);
+        }
+
+        return queue.shift() ?? null;
     }
 
     pause(msg: Message) {

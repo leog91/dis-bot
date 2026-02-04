@@ -1,6 +1,6 @@
 import { defineCommand } from "..";
+import { logger } from "../../utils/logger";
 import { useVoice } from "../../voice";
-import { randomAsset } from "../../utils";
 
 export default defineCommand({
     name: "pain",
@@ -12,13 +12,11 @@ export default defineCommand({
 
         const voice = useVoice(msg.guild.id);
 
-        const file = randomAsset("age");
-        if (!file) {
-            await msg.reply("⚠️ No audio files found in this category.");
-            return;
+        const played = await voice.playRandomNoRepeat(msg, "age");
+        if (played) {
+            const server = msg.guild?.name || "DM";
+            logger(server, `Pain played: ${played} by ${msg.author.tag}`, "VOICE");
         }
-
-        await voice.play(msg, file, true);
 
         await msg.react("🫦");
 
