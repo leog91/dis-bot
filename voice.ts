@@ -16,23 +16,50 @@ import {
 } from "@discordjs/voice";
 import fetch from "node-fetch";
 import { Message, Guild } from "discord.js";
-import { join, dirname, basename } from "path";
+import { join, dirname, basename, isAbsolute } from "path";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const AUDIO_ROOT = join(__dirname, "assets", "audio");
+const PRIVATE_AUDIO_ROOT = process.env.ASSETS_PRIVATE_DIR
+    ? join(process.env.ASSETS_PRIVATE_DIR, "audio")
+    : null;
 
 const hasExtension = (filename: string): boolean => /\.[a-z0-9]+$/i.test(filename);
 
+const getAudioRoots = (): string[] => {
+    const roots: string[] = [];
+    if (PRIVATE_AUDIO_ROOT && fs.existsSync(PRIVATE_AUDIO_ROOT)) {
+        roots.push(PRIVATE_AUDIO_ROOT);
+    }
+    roots.push(AUDIO_ROOT);
+    return roots;
+};
+
+const formatAudioPathForLog = (filePath: string): string => {
+    for (const root of getAudioRoots()) {
+        const prefix = root.endsWith("/") ? root : `${root}/`;
+        if (filePath.startsWith(prefix)) {
+            return filePath.slice(prefix.length);
+        }
+    }
+    return filePath;
+};
+
 const listAudioFiles = (folderRel: string): string[] => {
-    const folderPath = join(AUDIO_ROOT, folderRel);
-    if (!fs.existsSync(folderPath)) return [];
-    const entries = fs.readdirSync(folderPath, { withFileTypes: true });
-    return entries
-        .filter((entry) => entry.isFile())
-        .map((entry) => join(folderRel, entry.name));
+    const files: string[] = [];
+    for (const root of getAudioRoots()) {
+        const folderPath = join(root, folderRel);
+        if (!fs.existsSync(folderPath)) continue;
+        const entries = fs.readdirSync(folderPath, { withFileTypes: true });
+        for (const entry of entries) {
+            if (!entry.isFile()) continue;
+            files.push(join(folderPath, entry.name));
+        }
+    }
+    return files;
 };
 
 const findByBasename = (name: string): string | null => {
@@ -54,7 +81,11 @@ const findByBasename = (name: string): string | null => {
         }
     };
 
-    walk(AUDIO_ROOT);
+    for (const root of getAudioRoots()) {
+        if (fs.existsSync(root)) {
+            walk(root);
+        }
+    }
 
     if (matches.length === 0) return null;
     matches.sort();
@@ -69,24 +100,33 @@ const findByBasename = (name: string): string | null => {
 const resolveAudioPath = (input: string): string | null => {
     const normalized = input.replace(/\\/g, "/").trim();
 
+    if (isAbsolute(normalized) && fs.existsSync(normalized)) {
+        return normalized;
+    }
+
     if (normalized.includes("/")) {
-        if (hasExtension(normalized)) {
-            const direct = join(AUDIO_ROOT, normalized);
-            return fs.existsSync(direct) ? direct : null;
+        for (const root of getAudioRoots()) {
+            if (hasExtension(normalized)) {
+                const direct = join(root, normalized);
+                if (fs.existsSync(direct)) return direct;
+                continue;
+            }
+
+            const candidates = [".mp3", ".ogg", ".wav"].map((ext) =>
+                join(root, `${normalized}${ext}`)
+            );
+
+            const found = candidates.find((candidate) => fs.existsSync(candidate));
+            if (found) return found;
         }
-
-        const candidates = [".mp3", ".ogg", ".wav"].map((ext) =>
-            join(AUDIO_ROOT, `${normalized}${ext}`)
-        );
-
-        const found = candidates.find((candidate) => fs.existsSync(candidate));
-        if (found) return found;
     } else {
-        const directCandidate = hasExtension(normalized)
-            ? join(AUDIO_ROOT, normalized)
-            : join(AUDIO_ROOT, `${normalized}.mp3`);
+        for (const root of getAudioRoots()) {
+            const directCandidate = hasExtension(normalized)
+                ? join(root, normalized)
+                : join(root, `${normalized}.mp3`);
 
-        if (fs.existsSync(directCandidate)) return directCandidate;
+            if (fs.existsSync(directCandidate)) return directCandidate;
+        }
     }
 
     if (!hasExtension(normalized)) {
@@ -218,7 +258,7 @@ export class GuildVoiceManager {
         }
 
         const filePath = isRandom
-            ? join(AUDIO_ROOT, "age", filename)
+            ? resolveAudioPath(`age/${filename}`)
             : resolveAudioPath(filename);
 
         if (!filePath) {
@@ -265,7 +305,7 @@ export class GuildVoiceManager {
         }
 
         await this.play(msg, nextFile);
-        return nextFile;
+        return formatAudioPathForLog(nextFile);
     }
 
     private nextFromQueue(folder: string): string | null {

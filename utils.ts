@@ -1,5 +1,5 @@
 import fs from "fs";
-import { NewsChannel, TextChannel, ThreadChannel } from "discord.js"; // Importing TextChannel for type annotation
+import type { TextBasedChannel } from "discord.js";
 
 // Type for commands
 // export type Command = "cat" | "age"; // Add more commands as needed
@@ -10,7 +10,8 @@ const folderPaths: Record<string, string> = {
     age: "./assets/audio/age/",
 };
 
-type ImageChannel = TextChannel | ThreadChannel | NewsChannel;
+// Use a structural type to avoid cross-module discord.js type identity mismatches.
+type ImageChannel = Pick<TextBasedChannel, "send">;
 
 export const sendRandomImg = async (command: string, channel: ImageChannel): Promise<void> => {
     const assets: string[] = fs.readdirSync(folderPaths[command]);
@@ -40,5 +41,4 @@ export const randomAsset = (command: string): string => {
     // return folderPaths[command] + assets[Math.floor(Math.random() * assets.length)];
     return assets[Math.floor(Math.random() * assets.length)];
 };
-
 

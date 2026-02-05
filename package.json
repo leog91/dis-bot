@@ -8,6 +8,8 @@
     "dev": "node --watch --experimental-strip-types index.ts",
     "dev-logging": "npm run prepare-logs && npm run dev >> logs/log-$(date +%Y-%m-%d).txt 2>&1",
     "dev-logging-watch": "npm run dev-logging & tail -f logs/log-$(date +%Y-%m-%d).txt",
+    "sync-private-assets": "bash scripts/sync-private-assets.sh",
+    "typecheck:private": "tsc -p tsconfig.private.json",
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -33,9 +35,11 @@
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
+    "@types/node": "^22.10.5",
     "@types/bun": "^1.3.6",
     "better-sqlite3": "^12.6.2",
     "drizzle-kit": "^0.31.8",
-    "nodemon": "^3.1.7"
+    "nodemon": "^3.1.7",
+    "typescript": "^5.7.3"
   }
 }

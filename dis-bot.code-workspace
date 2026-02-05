@@ -1,0 +1,11 @@
+{
+  "folders": [
+    { "path": "./" },
+    { "path": "../dis-bot-assets-private" }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/node_modules": true
+    }
+  }
+}
