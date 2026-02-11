@@ -1,9 +1,5 @@
-
-
-import { Message, TextChannel } from "discord.js";
+import { Message } from "discord.js";
 import { defineCommand } from "..";
-
-
 export default defineCommand({
     name: "bot",
     description: "Greeting",
@@ -14,8 +10,6 @@ export default defineCommand({
     execute: async (msg: Message) => {
         msg.reply("BUEN DIA GRUPO");
     }
-
-
 
 });
 

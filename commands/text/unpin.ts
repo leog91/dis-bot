@@ -1,5 +1,5 @@
 import { defineCommand } from "..";
-import { Message, TextChannel } from "discord.js";
+import { Message } from "discord.js";
 import { db } from "../../db";
 import { pins } from "../../db/schema";
 import { and, eq } from "drizzle-orm";

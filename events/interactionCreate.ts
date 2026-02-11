@@ -2,7 +2,7 @@
 import { Interaction, ComponentType } from "discord.js";
 import fs from "fs";
 import path from "path";
-import { logger } from "../utils/logger"; // adjust path
+import { logger } from "../utils/logger";
 
 const FILE = path.resolve("./crashcounter.json");
 
@@ -63,8 +63,8 @@ export default async function interactionCreate(interaction: Interaction) {
 
         try {
             await interaction.deferUpdate();
-        } catch {
-            // ignore
+        } catch (err) {
+            logger(server, `Failed to defer update on user select: ${err}`, "ERROR");
         }
         return;
     }
@@ -76,7 +76,9 @@ export default async function interactionCreate(interaction: Interaction) {
     if (!userId) {
         try {
             await interaction.reply({ content: "Select a user first." });
-        } catch { }
+        } catch (err) {
+            logger(server, `Failed to reply to button press (no user selected): ${err}`, "ERROR");
+        }
         return;
     }
 
@@ -102,12 +104,16 @@ export default async function interactionCreate(interaction: Interaction) {
 
     try {
         await interaction.deferUpdate();
-    } catch { }
+    } catch (err) {
+        logger(server, `Failed to defer update on button press: ${err}`, "ERROR");
+    }
 
     try {
         await interaction.editReply({
             content: `💥 **Crash Tracker**\n\n${renderTable(guildData)}`,
             components: interaction.message.components,
         });
-    } catch { }
+    } catch (err) {
+        logger(server, `Failed to edit reply on button press: ${err}`, "ERROR");
+    }
 }
