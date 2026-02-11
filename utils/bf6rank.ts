@@ -1,42 +1,33 @@
-
-
-
 import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
 import { db } from "../db/index";
 import { bf6Players, bf6Scrapes } from "../db/schema";
 import { eq } from "drizzle-orm";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const PLAYERS_CONFIG_PATH = path.join(__dirname, "..", "config", "bf6players.json");
 
 type Player = {
     userName: string;
     id: string;
 };
 
+async function loadPlayers(): Promise<Player[]> {
+    try {
+        const data = await fs.readFile(PLAYERS_CONFIG_PATH, "utf-8");
+        return JSON.parse(data);
+    } catch (error) {
+        console.error("❌ Failed to load BF6 players config:", error);
+        return [];
+    }
+}
+
 async function delay(ms: number) {
     return new Promise(res => setTimeout(res, ms));
 }
-
-const players: Player[] = [
-    { userName: "gd92", id: "3194756111" },
-    { userName: "Lik4n", id: "3105796734" },
-    { userName: "pablocc74", id: "3211453693" },
-    { userName: "Mave", id: "3113523271" },
-    { userName: "andy", id: "2778059679" },
-    { userName: "AxelFLoyd", id: "3120040957" },
-    { userName: "giraldo", id: "3165910038" },
-    { userName: "salsagolf", id: "3176788207" },
-    { userName: "perro", id: "1000350916995" },
-
-    { userName: "fedepolito", id: "3146576220" },
-    { userName: "mastermind", id: "2740207544" },
-    {
-        userName: "sharpvertex", id: "1001311619103"
-    },
-
-    { userName: "leog", id: "2992584642" },
-
-
-
-];
 
 export type PlayerRank = {
     id: string;
@@ -50,12 +41,10 @@ export type PlayerRank = {
     timePlayedDisplay: string;
     timePlayedValue: number;
     profileUrl: string;
-
 };
 
 async function fetchPlayerData(player: Player): Promise<PlayerRank | null> {
     try {
-
         const url = `https://api.tracker.gg/api/v2/bf6/standard/profile/ign/${player.id}`
         const response = await fetch(url, {
             headers: {
@@ -107,6 +96,12 @@ async function fetchPlayerData(player: Player): Promise<PlayerRank | null> {
 export async function bf6Rank(): Promise<PlayerRank[]> {
     console.log("Fetching player data sequentially...\n");
 
+    const players = await loadPlayers();
+    if (players.length === 0) {
+        console.error("❌ No players configured. Check config/bf6players.json");
+        return [];
+    }
+
     const playerRank: PlayerRank[] = [];
 
     // Sequential fetching to avoid rate limits
@@ -115,7 +110,7 @@ export async function bf6Rank(): Promise<PlayerRank[]> {
         if (data) {
             playerRank.push(data);
         }
-        await delay(1000); // 
+        await delay(1000);
     }
 
     // Sort by kills descending
@@ -136,6 +131,12 @@ export async function bf6Rank(): Promise<PlayerRank[]> {
 
 export async function updateBf6RankFile() {
     const results: PlayerRank[] = [];
+    const players = await loadPlayers();
+    
+    if (players.length === 0) {
+        console.error("❌ No players configured. Check config/bf6players.json");
+        return [];
+    }
 
     console.log("Fetching player data sequentially...");
     for (const player of players) {
@@ -143,7 +144,7 @@ export async function updateBf6RankFile() {
         if (data) {
             results.push(data);
         }
-        await new Promise((res) => setTimeout(res, 1000));
+        await delay(1000);
     }
 
     if (results.length === 0) {
@@ -164,7 +165,7 @@ export async function updateBf6RankFile() {
     // DB Persistence
     try {
         console.log("💾 Saving to database...");
-        const scrapedAt = new Date(); // Use same timestamp for all records in this batch
+        const scrapedAt = new Date();
 
         for (const p of results) {
             // 1. Upsert Metadata
@@ -205,4 +206,3 @@ export async function updateBf6RankFile() {
 
     return results;
 }
-
