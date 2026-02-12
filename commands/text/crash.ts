@@ -10,7 +10,13 @@ import {
 import fs from "fs";
 import path from "path";
 
-const FILE = path.resolve("./crashcounter.json");
+const crashCounterPathFromEnv = process.env.CRASH_COUNTER_FILE_PATH
+    ?? (process.env.ASSETS_PRIVATE_DIR
+        ? path.join(process.env.ASSETS_PRIVATE_DIR, "crashcounter.json")
+        : "./crashcounter.json");
+const FILE = path.isAbsolute(crashCounterPathFromEnv)
+    ? crashCounterPathFromEnv
+    : path.resolve(crashCounterPathFromEnv);
 
 type GuildData = {
     users: Record<string, { name: string; crashes: number }>;
@@ -19,6 +25,7 @@ type GuildData = {
 type CrashData = Record<string, GuildData>; // key = guildId
 
 // Ensure JSON exists
+fs.mkdirSync(path.dirname(FILE), { recursive: true });
 if (!fs.existsSync(FILE)) {
     fs.writeFileSync(FILE, JSON.stringify({}, null, 2));
 }

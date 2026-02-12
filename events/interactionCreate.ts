@@ -4,7 +4,13 @@ import fs from "fs";
 import path from "path";
 import { logger } from "../utils/logger";
 
-const FILE = path.resolve("./crashcounter.json");
+const crashCounterPathFromEnv = process.env.CRASH_COUNTER_FILE_PATH
+    ?? (process.env.ASSETS_PRIVATE_DIR
+        ? path.join(process.env.ASSETS_PRIVATE_DIR, "crashcounter.json")
+        : "./crashcounter.json");
+const FILE = path.isAbsolute(crashCounterPathFromEnv)
+    ? crashCounterPathFromEnv
+    : path.resolve(crashCounterPathFromEnv);
 
 type GuildData = {
     users: Record<string, { name: string; crashes: number }>;
@@ -15,6 +21,7 @@ type CrashData = Record<string, GuildData>;
 const selectedUser = new Map<string, string>();
 
 function loadData(): CrashData {
+    fs.mkdirSync(path.dirname(FILE), { recursive: true });
     if (!fs.existsSync(FILE)) {
         fs.writeFileSync(FILE, JSON.stringify({}, null, 2));
         return {};

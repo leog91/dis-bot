@@ -34,12 +34,15 @@ DB_FILE_PATH=../dis-bot-assets-private/sqlite.db
 ASSETS_PRIVATE_DIR=/home/user/repo/dis-bot-assets-private
 PRIVATE_COMMANDS_DIR=/home/user/repo/dis-bot-assets-private/commands
 BF6_PLAYERS_CONFIG_PATH=/home/user/repo/dis-bot-assets-private/config/bf6players.json
+CRASH_COUNTER_FILE_PATH=/home/user/repo/dis-bot-assets-private/crashcounter.json
 ```
 
 `DB_FILE_PATH` can be absolute or relative to this repo directory. `DB_FILE_NAME` is still
 accepted for backward compatibility, but `DB_FILE_PATH` is preferred.
 `BF6_PLAYERS_CONFIG_PATH` is optional; if not set and `ASSETS_PRIVATE_DIR` is set, the bot
 defaults to `${ASSETS_PRIVATE_DIR}/config/bf6players.json`.
+`CRASH_COUNTER_FILE_PATH` is optional; if not set and `ASSETS_PRIVATE_DIR` is set, the bot
+defaults to `${ASSETS_PRIVATE_DIR}/crashcounter.json`.
 
 4. Run the bot:
 
@@ -119,6 +122,7 @@ Private commands override public ones if they share the same name.
 - Audio/assets search order is private first, then public.
 - Private assets/commands live outside this repo and are configured via environment variables.
 - SQLite can live outside this repo via `DB_FILE_PATH` (for example in `../dis-bot-assets-private/sqlite.db`).
+- Crash tracker file can live outside this repo via `CRASH_COUNTER_FILE_PATH`.
 
 ## Typecheck Private Commands
 
