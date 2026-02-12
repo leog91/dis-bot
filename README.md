@@ -25,6 +25,7 @@ npm install
 
 ```
 BOT_TOKEN=your_discord_bot_token
+DB_FILE_PATH=../dis-bot-assets-private/sqlite.db
 ```
 
 3. Optional private repo variables:
@@ -34,10 +35,20 @@ ASSETS_PRIVATE_DIR=/home/user/repo/dis-bot-assets-private
 PRIVATE_COMMANDS_DIR=/home/user/repo/dis-bot-assets-private/commands
 ```
 
+`DB_FILE_PATH` can be absolute or relative to this repo directory. `DB_FILE_NAME` is still
+accepted for backward compatibility, but `DB_FILE_PATH` is preferred.
+
 4. Run the bot:
 
 ```
 bun run index.ts
+```
+
+On startup, Drizzle migrations are applied automatically to the configured `DB_FILE_PATH`.
+You can also run them manually:
+
+```
+npm run db:migrate
 ```
 
 ## Private Assets
@@ -102,6 +113,7 @@ Private commands override public ones if they share the same name.
 - Public commands load first, private commands load after and override by name.
 - Audio/assets search order is private first, then public.
 - Private assets/commands live outside this repo and are configured via environment variables.
+- SQLite can live outside this repo via `DB_FILE_PATH` (for example in `../dis-bot-assets-private/sqlite.db`).
 
 ## Typecheck Private Commands
 

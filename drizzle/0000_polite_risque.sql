@@ -1,4 +1,4 @@
-CREATE TABLE `bf6_players` (
+CREATE TABLE IF NOT EXISTS `bf6_players` (
 	`id` text PRIMARY KEY NOT NULL,
 	`platform_user_handle` text NOT NULL,
 	`user` text NOT NULL,
@@ -7,7 +7,7 @@ CREATE TABLE `bf6_players` (
 	`updated_at` integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE `bf6_scrapes` (
+CREATE TABLE IF NOT EXISTS `bf6_scrapes` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`player_id` text NOT NULL,
 	`kills` integer NOT NULL,
@@ -21,5 +21,5 @@ CREATE TABLE `bf6_scrapes` (
 	FOREIGN KEY (`player_id`) REFERENCES `bf6_players`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-CREATE INDEX `player_date_idx` ON `bf6_scrapes` (`player_id`,`scraped_at`);--> statement-breakpoint
-CREATE INDEX `scraped_at_idx` ON `bf6_scrapes` (`scraped_at`);
+CREATE INDEX IF NOT EXISTS `player_date_idx` ON `bf6_scrapes` (`player_id`,`scraped_at`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `scraped_at_idx` ON `bf6_scrapes` (`scraped_at`);
