@@ -8,7 +8,10 @@ import { eq } from "drizzle-orm";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PLAYERS_CONFIG_PATH = path.join(__dirname, "..", "config", "bf6players.json");
+const fallbackPlayersConfigPath = process.env.ASSETS_PRIVATE_DIR
+    ? path.join(process.env.ASSETS_PRIVATE_DIR, "config", "bf6players.json")
+    : path.join(__dirname, "..", "config", "bf6players.json");
+const PLAYERS_CONFIG_PATH = process.env.BF6_PLAYERS_CONFIG_PATH ?? fallbackPlayersConfigPath;
 
 type Player = {
     userName: string;
@@ -98,7 +101,7 @@ export async function bf6Rank(): Promise<PlayerRank[]> {
 
     const players = await loadPlayers();
     if (players.length === 0) {
-        console.error("❌ No players configured. Check config/bf6players.json");
+        console.error(`❌ No players configured. Check ${PLAYERS_CONFIG_PATH}`);
         return [];
     }
 
@@ -134,7 +137,7 @@ export async function updateBf6Data() {
     const players = await loadPlayers();
     
     if (players.length === 0) {
-        console.error("❌ No players configured. Check config/bf6players.json");
+        console.error(`❌ No players configured. Check ${PLAYERS_CONFIG_PATH}`);
         return [];
     }
 
