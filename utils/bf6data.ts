@@ -1,7 +1,7 @@
 import { db } from "../db/index";
 import { bf6Scrapes, bf6Players } from "../db/schema";
 import { desc, eq, sql, and, lt, gt, inArray, lte } from "drizzle-orm";
-import { PlayerRank, updateBf6RankFile } from "./bf6rank";
+import { PlayerRank, updateBf6Data } from "./bf6rank";
 
 // ================= CONFIG =================
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
@@ -169,7 +169,7 @@ export async function getBF6Data(): Promise<any[]> {
 
         if (!latestScrapes.length) {
             console.log("No DB data found. Will fetch fresh data.");
-            return await updateBf6RankFile();
+            return await updateBf6Data();
         }
 
         // Check freshness
@@ -182,14 +182,14 @@ export async function getBF6Data(): Promise<any[]> {
             return latestScrapes;
         } else {
             console.log("DB data stale. Will fetch fresh data.");
-            return await updateBf6RankFile();
+            return await updateBf6Data();
         }
 
     } catch (err) {
         console.error("DB Error:", err);
         console.log("Fallback to direct fetch.");
     }
-    return await updateBf6RankFile();
+    return await updateBf6Data();
 }
 
 /**
@@ -200,7 +200,7 @@ export async function refreshBF6Data(): Promise<{
     durationMs: number;
 }> {
     const start = performance.now();
-    const data = await updateBf6RankFile();
+    const data = await updateBf6Data();
     const end = performance.now();
 
     return {

@@ -1,22 +1,26 @@
-import fs from "fs/promises";
-import path from "path";
-import { updateBf6RankFile } from "../utils/bf6rank";
+import { db } from "../db/index";
+import { bf6Scrapes } from "../db/schema";
+import { desc } from "drizzle-orm";
+import { updateBf6Data } from "../utils/bf6rank";
 
-
-
-const CACHE_FILE = path.join(process.cwd(), "bf6rank.json");
 const CACHE_TTL = 1000 * 60 * 60 * 6; // 6 hours
 
 class BF6RankService {
     private lastUpdated = 0;
 
     async load() {
-        try {
-            const stats = await fs.stat(CACHE_FILE);
-            this.lastUpdated = stats.mtimeMs;
-        } catch {
+        const latest = await db
+            .select({ scrapedAt: bf6Scrapes.scrapedAt })
+            .from(bf6Scrapes)
+            .orderBy(desc(bf6Scrapes.scrapedAt))
+            .limit(1);
+
+        if (!latest.length) {
             this.lastUpdated = 0;
+            return;
         }
+
+        this.lastUpdated = latest[0].scrapedAt.getTime();
     }
 
     isExpired() {
@@ -24,15 +28,10 @@ class BF6RankService {
     }
 
     async update() {
-        console.log("🔄 Updating BF6 rank cache...");
-        await updateBf6RankFile();
+        console.log("🔄 Updating BF6 rank data...");
+        await updateBf6Data();
         this.lastUpdated = Date.now();
-        console.log("✅ BF6 rank cache updated.");
-    }
-
-    async getData() {
-        const file = await fs.readFile(CACHE_FILE, "utf8");
-        return JSON.parse(file);
+        console.log("✅ BF6 rank data updated.");
     }
 }
 

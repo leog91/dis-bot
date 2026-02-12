@@ -129,7 +129,7 @@ export async function bf6Rank(): Promise<PlayerRank[]> {
     return playerRank;
 }
 
-export async function updateBf6RankFile() {
+export async function updateBf6Data() {
     const results: PlayerRank[] = [];
     const players = await loadPlayers();
     
@@ -153,14 +153,6 @@ export async function updateBf6RankFile() {
     }
 
     results.sort((a, b) => b.kills - a.kills);
-
-    const payload = {
-        lastUpdated: Date.now(),
-        data: results
-    };
-
-    await fs.writeFile("./bf6rank.json", JSON.stringify(payload, null, 2));
-    console.log("💾 Saved updated player ranks to bf6rank.json");
 
     // DB Persistence
     try {
