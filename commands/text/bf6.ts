@@ -161,9 +161,6 @@ export default defineCommand({
                     break;
 
 
-                //await msg.channel.send("[Watch video](https://example.com)");
-
-
                 default:
                     await msg.reply(
                         "Unknown subcommand. Available: kills, deaths, revives, score, rank, timePlayed, bans, refresh"
