@@ -116,6 +116,28 @@ On startup, the bot loads commands from:
 
 Private commands override public ones if they share the same name.
 
+### Command Permissions + Constants
+
+Commands support permission rules via `permissions`:
+
+- `USER` (allow specific user IDs)
+- `ROLE` (allow specific role IDs)
+- `GUILD` (allow specific guild/server IDs)
+- `OWNER` (bot application owner only)
+- `CUSTOM` (custom check function)
+
+Example:
+
+```ts
+permissions: [
+  { type: "GUILD", ids: [guilds.Bytes, guilds.plll] }
+]
+```
+
+For sensitive/server-specific commands, keep the command files in `dis-bot-assets-private/commands`.
+Store IDs/constants in `dis-bot-assets-private/utils/constants.ts`, and import them directly in
+command files that require private IDs.
+
 ## Private/Public Summary
 
 - Public commands load first, private commands load after and override by name.
