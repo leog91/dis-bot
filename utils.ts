@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import type { TextBasedChannel } from "discord.js";
+import type { MessageCreateOptions } from "discord.js";
 
 // Type for commands
 // export type Command = "cat" | "age"; // Add more commands as needed
@@ -36,7 +36,9 @@ const resolveFolderPath = (command: string): string | null => {
 };
 
 // Use a structural type to avoid cross-module discord.js type identity mismatches.
-type ImageChannel = Pick<TextBasedChannel, "send">;
+type ImageChannel = {
+    send: (options: MessageCreateOptions) => Promise<unknown>;
+};
 
 export const sendRandomImg = async (command: string, channel: ImageChannel): Promise<void> => {
     const folderPath = resolveFolderPath(command);
