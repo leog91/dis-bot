@@ -2,8 +2,7 @@ import fs from "fs";
 import path from "path";
 import type { MessageCreateOptions } from "discord.js";
 
-// Type for commands
-// export type Command = "cat" | "age"; // Add more commands as needed
+
 
 // Candidate directories per command (old paths + private-assets paths).
 const folderPathCandidates: Record<string, string[]> = {

@@ -1,6 +1,6 @@
 import { defineCommand } from "..";
 import { Message, TextChannel } from "discord.js";
-import { guilds, users } from "../../utils/constants";
+import { guilds, users } from "../../../dis-bot-assets-private/utils/constants";
 import { getBF6Data, getProgressData, refreshBF6Data } from "../../utils/bf6data";
 
 // ================= CONFIG =================
@@ -22,10 +22,6 @@ export default defineCommand({
     name: "bf6",
     description: "BF6 stats",
     type: "TEXT",
-    permissions: [
-        { type: "GUILD", ids: [guilds.Bytes, guilds.plll] }
-    ],
-
     async execute(msg: Message, args: string[]) {
         if (!(msg.channel instanceof TextChannel)) {
             await msg.reply("This command can only be used in a text channel.");
