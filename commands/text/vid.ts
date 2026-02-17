@@ -2,8 +2,38 @@
 
 import { Message, TextChannel } from "discord.js";
 import { defineCommand } from "..";
+import { useVoice } from "../../voice";
 
 declare const Bun: any;
+
+const runYtDlpGetUrl = async (url: string, extractorArg?: string) => {
+    const cmd = [
+        "yt-dlp",
+        "-f", "b",
+        "-g",
+        "--no-warnings",
+        "--extractor-retries", "3",
+    ];
+
+    if (extractorArg) {
+        cmd.push("--extractor-args", extractorArg);
+    }
+
+    cmd.push(url);
+
+    const process = Bun.spawn(cmd);
+    const [stdoutText, stderrText, exitCode] = await Promise.all([
+        new Response(process.stdout).text(),
+        new Response(process.stderr).text(),
+        process.exited,
+    ]);
+
+    return {
+        stdoutText: stdoutText.trim(),
+        stderrText: stderrText.trim(),
+        exitCode,
+    };
+};
 
 export default defineCommand({
     name: "vid",
@@ -12,9 +42,26 @@ export default defineCommand({
     hidden: false,
     permissions: [],
     execute: async (msg: Message) => {
+
+
         if (!(msg.channel instanceof TextChannel)) {
             await msg.reply("This command can only be used in a text channel.");
             return;
+        }
+
+
+        if (msg.guild && msg.member?.voice.channelId) {
+            const voice = useVoice(msg.guild.id);
+            const userChannelId = msg.member.voice.channelId;
+            const botChannelId = voice.connection?.joinConfig.channelId;
+
+            if (botChannelId && botChannelId === userChannelId) {
+                try {
+                    await voice.playRandomNoRepeat(msg, "bot/task-acknowledged");
+                } catch (err) {
+                    console.error("Failed to play task acknowledgment audio:", err);
+                }
+            }
         }
 
         const args = msg.content.split(" ").slice(1);
@@ -33,24 +80,31 @@ export default defineCommand({
         }
 
         try {
+            const parsed = new URL(url);
+            const host = parsed.hostname.toLowerCase();
+            const isTwitterLike = host.includes("twitter.com") || host.includes("x.com");
 
-            const process = Bun.spawn([
-                "yt-dlp",
-                "-f", "b",   // best pre-merged format (suppresses the first warning)
-                "-g",
-                "--no-warnings", // suppress yt-dlp warnings entirely
-                url
-            ]);
-            const stdoutText = await new Response(process.stdout).text();
-            const stderrText = await new Response(process.stderr).text();
+            const attempts: Array<string | undefined> = isTwitterLike
+                ? [undefined, "twitter:api=legacy", "twitter:api=syndication"]
+                : [undefined];
 
-            if (!stdoutText) {
-                console.error(stderrText);
-                await msg.reply("Failed to extract video URL.");
-                return;
+            let directUrl = "";
+            let lastError = "";
+
+            for (const extractorArg of attempts) {
+                const result = await runYtDlpGetUrl(url, extractorArg);
+                if (result.stdoutText) {
+                    directUrl = result.stdoutText;
+                    break;
+                }
+                lastError = result.stderrText || `yt-dlp exited with code ${result.exitCode}`;
             }
 
-            const directUrl = stdoutText.trim();
+            if (!directUrl) {
+                console.error(lastError);
+                // Fallback: keep processing by shortening the original URL.
+                directUrl = url;
+            }
 
             // Shorten with is.gd
             const shortRes = await fetch(
