@@ -1,11 +1,9 @@
 {
-  "folders": [
-    { "path": "./" },
-    { "path": "../dis-bot-assets-private" }
-  ],
+  "folders": [{ "path": "./" }, { "path": "../dis-bot-assets-private" }],
   "settings": {
     "files.exclude": {
-      "**/node_modules": true
-    }
-  }
+      "**/node_modules": true,
+    },
+    "cSpell.words": ["bfdata"],
+  },
 }

@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const bf6Players = sqliteTable('bf6_players', {
     id: text('id').primaryKey(), // Using the ID from tracker.gg as the primary key
@@ -25,6 +25,28 @@ export const bf6Scrapes = sqliteTable('bf6_scrapes', {
     playerDateIdx: index('player_date_idx').on(table.playerId, table.scrapedAt),
     // Index for date-based queries
     scrapedAtIdx: index('scraped_at_idx').on(table.scrapedAt),
+}));
+
+export const bf6WeaponPlaystyles = sqliteTable('bf6_weapon_playstyles', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    playerId: text('player_id').notNull().references(() => bf6Players.id),
+    weaponName: text('weapon_name').notNull(),
+    kills: integer('kills').notNull(),
+    timePlayedValue: integer('time_played_value').notNull(), // seconds
+    timePlayedDisplay: text('time_played_display').notNull(),
+    adsKills: integer('ads_kills').notNull(),
+    hipfireKills: integer('hipfire_kills').notNull(),
+    headshots: integer('headshots').notNull(),
+    shotsHit: integer('shots_hit').notNull(),
+    shotsFired: integer('shots_fired').notNull(),
+    adsPct: integer('ads_pct').notNull(), // basis points (x100)
+    hipfirePct: integer('hipfire_pct').notNull(), // basis points (x100)
+    headshotPct: integer('headshot_pct').notNull(), // basis points (x100)
+    accuracyPct: integer('accuracy_pct').notNull(), // basis points (x100)
+    scrapedAt: integer('scraped_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+    playerWeaponUq: uniqueIndex('player_weapon_uq').on(table.playerId, table.weaponName),
+    playerTimeIdx: index('weapon_player_time_idx').on(table.playerId, table.timePlayedValue),
 }));
 
 export const pins = sqliteTable('pins', {

@@ -1,5 +1,5 @@
 import { db } from "../db/index";
-import { bf6Scrapes, bf6Players } from "../db/schema";
+import { bf6Scrapes, bf6Players, bf6WeaponPlaystyles } from "../db/schema";
 import { desc, eq, sql, and, lt, gt, inArray, lte } from "drizzle-orm";
 import { PlayerRank, updateBf6Data } from "./bf6rank";
 
@@ -206,5 +206,54 @@ export async function refreshBF6Data(): Promise<{
     return {
         data,
         durationMs: end - start,
+    };
+}
+
+/**
+ * Gets latest stored weapon playstyle rows for a specific player (fresh snapshot only)
+ */
+export async function getPlayerWeaponPlaystyle(userInput: string) {
+    const normalized = userInput.trim().toLowerCase();
+    if (!normalized) return null;
+
+    const players = await db.select({
+        id: bf6Players.id,
+        platformUserHandle: bf6Players.platformUserHandle,
+        user: bf6Players.user,
+    }).from(bf6Players);
+
+    const exact = players.find((p) =>
+        p.id.toLowerCase() === normalized ||
+        p.user.toLowerCase() === normalized ||
+        p.platformUserHandle.toLowerCase() === normalized
+    );
+
+    const contains = players.find((p) =>
+        p.user.toLowerCase().includes(normalized) ||
+        p.platformUserHandle.toLowerCase().includes(normalized)
+    );
+
+    const matched = exact ?? contains;
+    if (!matched) return null;
+
+    const weapons = await db.select({
+        weaponName: bf6WeaponPlaystyles.weaponName,
+        kills: bf6WeaponPlaystyles.kills,
+        timePlayedDisplay: bf6WeaponPlaystyles.timePlayedDisplay,
+        timePlayedValue: bf6WeaponPlaystyles.timePlayedValue,
+        adsPct: bf6WeaponPlaystyles.adsPct,
+        hipfirePct: bf6WeaponPlaystyles.hipfirePct,
+        headshotPct: bf6WeaponPlaystyles.headshotPct,
+        accuracyPct: bf6WeaponPlaystyles.accuracyPct,
+    })
+        .from(bf6WeaponPlaystyles)
+        .where(eq(bf6WeaponPlaystyles.playerId, matched.id))
+        .orderBy(desc(bf6WeaponPlaystyles.timePlayedValue));
+
+    return {
+        playerId: matched.id,
+        user: matched.user,
+        platformUserHandle: matched.platformUserHandle,
+        weapons,
     };
 }
