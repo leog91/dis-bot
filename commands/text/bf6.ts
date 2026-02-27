@@ -41,6 +41,32 @@ const SUBCOMMANDS = [
 type SubCommand = typeof SUBCOMMANDS[number];
 const SUBCOMMANDS_LIST = SUBCOMMANDS.join(", ");
 
+const SUBCOMMAND_ALIASES: Partial<Record<SubCommand, string[]>> = {
+    helicopter: ["heli", "chopper"],
+    claymore: ["m18", "m18a1"],
+    mine: ["m15"],
+    timePlayed: ["time", "playtime"],
+    trackergg: ["tracker", "tg", "nicks", "nick"],
+    vehicles: ["vehicle", "veh"],
+};
+
+function resolveSubcommand(raw: string | undefined): SubCommand | null {
+    const normalized = raw?.trim().toLowerCase();
+    if (!normalized) return null;
+
+    const exact = SUBCOMMANDS.find((command) => command.toLowerCase() === normalized);
+    if (exact) return exact;
+
+    for (const command of SUBCOMMANDS) {
+        const aliases = SUBCOMMAND_ALIASES[command] ?? [];
+        if (aliases.some((alias) => alias.toLowerCase() === normalized)) {
+            return command;
+        }
+    }
+
+    return null;
+}
+
 const itemSubcommands: Record<string, BF6ItemLeaderboardKey> = {
     rpg: "rpg",
     mine: "m15",
@@ -78,13 +104,15 @@ export default defineCommand({
             return;
         }
 
-        const sub = args[0] as SubCommand;
+        const rawSub = args[0];
+        const sub = resolveSubcommand(rawSub);
 
         if (!sub) {
-            await msg.reply(
-                "Te falta el subcommand máquina:\n" +
-                SUBCOMMANDS_LIST
-            );
+            const hasInput = Boolean(rawSub?.trim());
+            const msgText = hasInput
+                ? `Unknown subcommand. Available: ${SUBCOMMANDS_LIST}`
+                : "Te falta el subcommand máquina:\n" + SUBCOMMANDS_LIST;
+            await msg.reply(msgText);
             return;
         }
 
@@ -293,9 +321,7 @@ export default defineCommand({
 
 
                 default:
-                    await msg.reply(
-                        `Unknown subcommand. Available: ${SUBCOMMANDS_LIST}`
-                    );
+                    await msg.reply(`Unknown subcommand. Available: ${SUBCOMMANDS_LIST}`);
                     return;
             }
 
