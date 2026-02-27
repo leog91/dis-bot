@@ -27,9 +27,8 @@ type SubCommand =
     | "refresh"
     | "trackergg"
     | "rpg"
-    | "mines"
-    | "m15"
-    | "m18a1"
+    | "mine"
+    | "claymore"
     | "knife"
     | "frag"
     | "mbt"
@@ -40,9 +39,8 @@ type SubCommand =
 
 const itemSubcommands: Record<string, BF6ItemLeaderboardKey> = {
     rpg: "rpg",
-    mines: "mines",
-    m15: "m15",
-    m18a1: "m18a1",
+    mine: "m15",
+    claymore: "m18a1",
     knife: "knife",
     frag: "frag",
     mbt: "mbt",
@@ -56,7 +54,7 @@ const itemTitles: Record<BF6ItemLeaderboardKey, string> = {
     rpg: "RPG",
     mines: "Mines",
     m15: "M15 Mine",
-    m18a1: "M18A1 Mine",
+    m18a1: "Claymore (M18A1)",
     knife: "Combat Knife",
     frag: "Frag Grenade",
     mbt: "Main Battle Tank (Leo 2A4 + M1A2)",
@@ -81,7 +79,7 @@ export default defineCommand({
         if (!sub) {
             await msg.reply(
                 "Te falta el subcommand máquina:\n" +
-                "kills, deaths, revives, score, rank, timePlayed, playStyle, bans, refresh, trackergg, rpg, mines, m15, m18a1, knife, frag, mbt, ifv, vehicles, helicopter, planes"
+                "kills, deaths, revives, score, rank, timePlayed, playStyle, bans, refresh, trackergg, rpg, mine, claymore, knife, frag, mbt, ifv, vehicles, helicopter, planes"
             );
             return;
         }
@@ -273,7 +271,7 @@ export default defineCommand({
 
                 default:
                     await msg.reply(
-                        "Unknown subcommand. Available: kills, deaths, revives, score, rank, timePlayed, playStyle, bans, refresh, trackergg, rpg, mines, m15, m18a1, knife, frag, mbt, ifv, vehicles, helicopter, planes"
+                        "Unknown subcommand. Available: kills, deaths, revives, score, rank, timePlayed, playStyle, bans, refresh, trackergg, rpg, mine, claymore, knife, frag, mbt, ifv, vehicles, helicopter, planes"
                     );
                     return;
             }
