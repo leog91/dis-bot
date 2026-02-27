@@ -49,6 +49,19 @@ export const bf6WeaponPlaystyles = sqliteTable('bf6_weapon_playstyles', {
     playerTimeIdx: index('weapon_player_time_idx').on(table.playerId, table.timePlayedValue),
 }));
 
+export const bf6ItemSnapshots = sqliteTable('bf6_item_snapshots', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    playerId: text('player_id').notNull().references(() => bf6Players.id),
+    itemKey: text('item_key').notNull(),
+    kills: integer('kills').notNull(),
+    timePlayedValue: integer('time_played_value').notNull(), // seconds
+    timePlayedDisplay: text('time_played_display').notNull(),
+    scrapedAt: integer('scraped_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+    playerItemUq: uniqueIndex('player_item_uq').on(table.playerId, table.itemKey),
+    itemSortIdx: index('item_sort_idx').on(table.itemKey, table.kills, table.timePlayedValue),
+}));
+
 export const pins = sqliteTable('pins', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     serverId: text('server_id').notNull(),

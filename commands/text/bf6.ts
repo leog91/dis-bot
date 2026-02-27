@@ -1,7 +1,15 @@
 import { defineCommand } from "..";
 import { Message, TextChannel } from "discord.js";
 import { guilds, users } from "../../../dis-bot-assets-private/utils/constants";
-import { getBF6Data, getPlayerWeaponPlaystyle, getProgressData, refreshBF6Data } from "../../utils/bf6data";
+import {
+    BF6ItemLeaderboardKey,
+    BF6ItemSortKey,
+    getBF6Data,
+    getItemLeaderboard,
+    getPlayerWeaponPlaystyle,
+    getProgressData,
+    refreshBF6Data,
+} from "../../utils/bf6data";
 
 // ================= CONFIG =================
 const REFRESH_OWNER_ID = users.leog;
@@ -17,7 +25,46 @@ type SubCommand =
     | "playStyle"
     | "bans"
     | "refresh"
-    | "trackergg";
+    | "trackergg"
+    | "rpg"
+    | "mines"
+    | "m15"
+    | "m18a1"
+    | "knife"
+    | "frag"
+    | "mbt"
+    | "ifv"
+    | "vehicles"
+    | "helicopter"
+    | "planes";
+
+const itemSubcommands: Record<string, BF6ItemLeaderboardKey> = {
+    rpg: "rpg",
+    mines: "mines",
+    m15: "m15",
+    m18a1: "m18a1",
+    knife: "knife",
+    frag: "frag",
+    mbt: "mbt",
+    ifv: "ifv",
+    vehicles: "vehicles",
+    helicopter: "helicopter",
+    planes: "planes",
+};
+
+const itemTitles: Record<BF6ItemLeaderboardKey, string> = {
+    rpg: "RPG",
+    mines: "Mines",
+    m15: "M15 Mine",
+    m18a1: "M18A1 Mine",
+    knife: "Combat Knife",
+    frag: "Frag Grenade",
+    mbt: "Main Battle Tank (Leo 2A4 + M1A2)",
+    ifv: "IFV (Strf + M3A3)",
+    vehicles: "All Vehicles",
+    helicopter: "Helicopters",
+    planes: "Planes",
+};
 
 export default defineCommand({
     name: "bf6",
@@ -34,7 +81,7 @@ export default defineCommand({
         if (!sub) {
             await msg.reply(
                 "Te falta el subcommand máquina:\n" +
-                "kills, deaths, revives, score, rank, timePlayed, playStyle, bans, refresh, trackergg"
+                "kills, deaths, revives, score, rank, timePlayed, playStyle, bans, refresh, trackergg, rpg, mines, m15, m18a1, knife, frag, mbt, ifv, vehicles, helicopter, planes"
             );
             return;
         }
@@ -95,6 +142,29 @@ export default defineCommand({
                     "\n```" +
                     trimmedNote
                 );
+                return;
+            }
+
+            const itemSub = itemSubcommands[sub];
+            if (itemSub) {
+                const requestedSort = (args[1] ?? "kills").toLowerCase();
+                const sortBy: BF6ItemSortKey = requestedSort === "timeplayed" ? "timePlayed" : "kills";
+                const rows = await getItemLeaderboard(itemSub, sortBy);
+
+                if (!rows.length) {
+                    await msg.reply(`No current ${itemTitles[itemSub]} data found yet.`);
+                    return;
+                }
+
+                const valueLabel = sortBy === "timePlayed" ? "time" : "kills";
+                const valueFor = (kills: number, timePlayedDisplay: string) =>
+                    sortBy === "timePlayed" ? timePlayedDisplay : `${kills}`;
+
+                const content = rows
+                    .map((row) => `${row.platformUserHandle} - ${valueFor(row.kills, row.timePlayedDisplay)} ${valueLabel}`)
+                    .join("\n");
+
+                await msg.reply(`📊 **${itemTitles[itemSub]}** (${sortBy})\n${content}`);
                 return;
             }
 
@@ -203,7 +273,7 @@ export default defineCommand({
 
                 default:
                     await msg.reply(
-                        "Unknown subcommand. Available: kills, deaths, revives, score, rank, timePlayed, playStyle, bans, refresh, trackergg"
+                        "Unknown subcommand. Available: kills, deaths, revives, score, rank, timePlayed, playStyle, bans, refresh, trackergg, rpg, mines, m15, m18a1, knife, frag, mbt, ifv, vehicles, helicopter, planes"
                     );
                     return;
             }

@@ -2,7 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import { db } from "../db/index";
-import { bf6Players, bf6Scrapes, bf6WeaponPlaystyles } from "../db/schema";
+import { bf6ItemSnapshots, bf6Players, bf6Scrapes, bf6WeaponPlaystyles } from "../db/schema";
 import { eq } from "drizzle-orm";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -63,9 +63,31 @@ export type WeaponPlaystyleSnapshot = {
     accuracyPct: number; // basis points (x100)
 };
 
+export type BF6ItemSnapshotKey =
+    | "rpg"
+    | "mines"
+    | "m15"
+    | "m18a1"
+    | "knife"
+    | "frag"
+    | "mbt"
+    | "ifv"
+    | "vehicles"
+    | "helicopter"
+    | "planes";
+
+export type BF6ItemSnapshot = {
+    playerId: string;
+    itemKey: BF6ItemSnapshotKey;
+    kills: number;
+    timePlayedValue: number;
+    timePlayedDisplay: string;
+};
+
 type PlayerFetchResult = {
     rank: PlayerRank;
     weaponPlaystyles: WeaponPlaystyleSnapshot[];
+    itemSnapshots: BF6ItemSnapshot[];
 };
 
 function normalizeKey(value: string): string {
@@ -123,6 +145,123 @@ function toBasisPoints(percent: number): number {
 
 function formatHours(seconds: number): string {
     return `${(seconds / 3600).toFixed(1)}h`;
+}
+
+function formatDuration(seconds: number): string {
+    const safe = Math.max(0, Math.round(seconds));
+    const hours = Math.floor(safe / 3600);
+    const mins = Math.floor((safe % 3600) / 60);
+    const secs = safe % 60;
+    if (hours > 0) return `${hours}h ${mins}m`;
+    if (mins > 0) return `${mins}m ${secs}s`;
+    return `${secs}s`;
+}
+
+const itemSnapshotKeys: BF6ItemSnapshotKey[] = [
+    "rpg",
+    "mines",
+    "m15",
+    "m18a1",
+    "knife",
+    "frag",
+    "mbt",
+    "ifv",
+    "vehicles",
+    "helicopter",
+    "planes",
+];
+
+function segmentMatchesItem(segment: any, item: BF6ItemSnapshotKey): boolean {
+    const type = String(segment?.type ?? "").toLowerCase();
+    const key = String(segment?.attributes?.key ?? "").toLowerCase();
+    const name = String(segment?.metadata?.name ?? "").toLowerCase();
+    const subcategory = String(segment?.metadata?.subcategoryName ?? "").toLowerCase();
+    const categoryName = String(segment?.metadata?.categoryName ?? "").toLowerCase();
+    const vehicleCategory = String(segment?.metadata?.category ?? "").toLowerCase();
+
+    switch (item) {
+        case "rpg":
+            return type === "gadget" && (key === "gad_rl_ungui" || name.includes("rpg"));
+        case "mines":
+            return type === "gadget" && (key.includes("gad_mine") || subcategory.includes("mine") || categoryName.includes("mine"));
+        case "m15":
+            return type === "gadget" && (key === "gad_mine_press" || name.includes("m15"));
+        case "m18a1":
+            return type === "gadget" && (
+                name.includes("m18a1") ||
+                name.includes("m18 a1") ||
+                key.includes("m18a1")
+            );
+        case "knife":
+            return type === "gadget" && (
+                name.includes("combat knife") ||
+                name.includes("knife") ||
+                key.includes("knife")
+            );
+        case "frag":
+            return type === "gadget" && (
+                name.includes("frag grenade") ||
+                name.includes("grenade") && name.includes("frag") ||
+                key.includes("frag")
+            );
+        case "mbt":
+            return (
+                type === "vehicle" &&
+                (
+                    vehicleCategory.includes("smbt") ||
+                    categoryName.includes("main battle tank") ||
+                    name.includes("leo 2a4") ||
+                    name.includes("m1a2")
+                )
+            );
+        case "ifv":
+            return (
+                type === "vehicle" &&
+                (
+                    vehicleCategory.includes("sifv") ||
+                    categoryName.includes("infantry fighting vehicle") ||
+                    name.includes("strf") ||
+                    name.includes("m3a3")
+                )
+            );
+        case "vehicles":
+            return type === "vehicle";
+        case "helicopter":
+            return type === "vehicle" && (vehicleCategory.includes("aah") || vehicleCategory.includes("ath") || categoryName.includes("helicopter"));
+        case "planes":
+            return (
+                type === "vehicle" &&
+                (
+                    vehicleCategory.includes("afj") ||
+                    vehicleCategory.includes("aab") ||
+                    categoryName.includes("jet") ||
+                    categoryName.includes("bomber") ||
+                    categoryName.includes("plane")
+                )
+            );
+        default:
+            return false;
+    }
+}
+
+function extractItemSnapshots(playerId: string, payload: any): BF6ItemSnapshot[] {
+    const segments = Array.isArray(payload?.data?.segments) ? payload.data.segments : [];
+
+    return itemSnapshotKeys.map((itemKey) => {
+        const matched = segments.filter((segment: any) => segmentMatchesItem(segment, itemKey));
+        const kills = matched.reduce((sum: number, segment: any) =>
+            sum + Math.round(getStatNumber(segment?.stats ?? {}, ["kills"], ["kills"])), 0);
+        const timePlayedValue = matched.reduce((sum: number, segment: any) =>
+            sum + Math.round(getStatNumber(segment?.stats ?? {}, ["timePlayed", "secondsPlayed"], ["timeplayed", "seconds"])), 0);
+
+        return {
+            playerId,
+            itemKey,
+            kills,
+            timePlayedValue,
+            timePlayedDisplay: formatDuration(timePlayedValue),
+        };
+    });
 }
 
 function extractWeaponPlaystyles(playerId: string, payload: any): WeaponPlaystyleSnapshot[] {
@@ -235,6 +374,7 @@ async function fetchPlayerData(player: Player): Promise<PlayerFetchResult | null
 
         const platformUserHandle = data.data?.platformInfo?.platformUserHandle ?? "N/A";
         const weaponPlaystyles = extractWeaponPlaystyles(player.id, data);
+        const itemSnapshots = extractItemSnapshots(player.id, data);
 
         console.log(`✅ ${player.userName}: ${kills} kills`);
 
@@ -252,7 +392,8 @@ async function fetchPlayerData(player: Player): Promise<PlayerFetchResult | null
                 timePlayedValue,
                 profileUrl
             },
-            weaponPlaystyles
+            weaponPlaystyles,
+            itemSnapshots,
         };
     } catch (error) {
         console.error(`❌ Failed to fetch ${player.userName}:`, error);
@@ -300,7 +441,7 @@ export async function updateBf6Data() {
     const results: PlayerRank[] = [];
     const fetchedResults: PlayerFetchResult[] = [];
     const players = await loadPlayers();
-    
+
     if (players.length === 0) {
         console.error(`❌ No players configured. Check ${PLAYERS_CONFIG_PATH}`);
         return [];
@@ -380,6 +521,21 @@ export async function updateBf6Data() {
                         hipfirePct: w.hipfirePct,
                         headshotPct: w.headshotPct,
                         accuracyPct: w.accuracyPct,
+                        scrapedAt,
+                    }))
+                );
+            }
+
+            // 4. Replace item snapshots for this player
+            await db.delete(bf6ItemSnapshots).where(eq(bf6ItemSnapshots.playerId, p.id));
+            if (entry.itemSnapshots.length > 0) {
+                await db.insert(bf6ItemSnapshots).values(
+                    entry.itemSnapshots.map((item) => ({
+                        playerId: item.playerId,
+                        itemKey: item.itemKey,
+                        kills: item.kills,
+                        timePlayedValue: item.timePlayedValue,
+                        timePlayedDisplay: item.timePlayedDisplay,
                         scrapedAt,
                     }))
                 );

@@ -1,11 +1,36 @@
 import { db } from "../db/index";
-import { bf6Scrapes, bf6Players, bf6WeaponPlaystyles } from "../db/schema";
+import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6WeaponPlaystyles } from "../db/schema";
 import { desc, eq, sql, and, lt, gt, inArray, lte } from "drizzle-orm";
 import { PlayerRank, updateBf6Data } from "./bf6rank";
 
 // ================= CONFIG =================
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
 // ==========================================
+
+export type BF6ItemLeaderboardKey =
+    | "rpg"
+    | "mines"
+    | "m15"
+    | "m18a1"
+    | "knife"
+    | "frag"
+    | "mbt"
+    | "ifv"
+    | "vehicles"
+    | "helicopter"
+    | "planes";
+
+export type BF6ItemSortKey = "kills" | "timePlayed";
+
+export type BF6ItemLeaderboardRow = {
+    playerId: string;
+    user: string;
+    platformUserHandle: string;
+    profileUrl: string;
+    kills: number;
+    timePlayedValue: number;
+    timePlayedDisplay: string;
+};
 
 /**
  * Fetches the latest scrape data for all players
@@ -256,4 +281,50 @@ export async function getPlayerWeaponPlaystyle(userInput: string) {
         platformUserHandle: matched.platformUserHandle,
         weapons,
     };
+}
+
+export async function getItemLeaderboard(
+    item: BF6ItemLeaderboardKey,
+    sortBy: BF6ItemSortKey = "kills"
+): Promise<BF6ItemLeaderboardRow[]> {
+    await getBF6Data();
+
+    const trackedPlayers = await db.select({
+        id: bf6Players.id,
+        user: bf6Players.user,
+        platformUserHandle: bf6Players.platformUserHandle,
+        profileUrl: bf6Players.profileUrl,
+    }).from(bf6Players);
+
+    const snapshots = await db.select({
+        playerId: bf6ItemSnapshots.playerId,
+        itemKey: bf6ItemSnapshots.itemKey,
+        kills: bf6ItemSnapshots.kills,
+        timePlayedValue: bf6ItemSnapshots.timePlayedValue,
+        timePlayedDisplay: bf6ItemSnapshots.timePlayedDisplay,
+    })
+        .from(bf6ItemSnapshots)
+        .where(eq(bf6ItemSnapshots.itemKey, item));
+
+    const snapshotByPlayer = new Map(
+        snapshots.map((s) => [s.playerId, s])
+    );
+
+    const rows: BF6ItemLeaderboardRow[] = trackedPlayers.map((player) => {
+        const snap = snapshotByPlayer.get(player.id);
+        return {
+            playerId: player.id,
+            user: player.user,
+            platformUserHandle: player.platformUserHandle,
+            profileUrl: player.profileUrl,
+            kills: snap?.kills ?? 0,
+            timePlayedValue: snap?.timePlayedValue ?? 0,
+            timePlayedDisplay: snap?.timePlayedDisplay ?? "0s",
+        };
+    });
+
+    return [...rows].sort((a, b) => {
+        if (sortBy === "timePlayed") return b.timePlayedValue - a.timePlayedValue;
+        return b.kills - a.kills;
+    });
 }
