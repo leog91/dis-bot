@@ -15,27 +15,31 @@ import {
 const REFRESH_OWNER_ID = users.leog;
 // ==========================================
 
-type SubCommand =
-    | "kills"
-    | "deaths"
-    | "revives"
-    | "score"
-    | "rank"
-    | "timePlayed"
-    | "playStyle"
-    | "bans"
-    | "refresh"
-    | "trackergg"
-    | "rpg"
-    | "mine"
-    | "claymore"
-    | "knife"
-    | "frag"
-    | "mbt"
-    | "ifv"
-    | "vehicles"
-    | "helicopter"
-    | "planes";
+const SUBCOMMANDS = [
+    "kills",
+    "deaths",
+    "revives",
+    "score",
+    "rank",
+    "timePlayed",
+    "playStyle",
+    "bans",
+    "refresh",
+    "trackergg",
+    "rpg",
+    "mine",
+    "claymore",
+    "knife",
+    "frag",
+    "mbt",
+    "ifv",
+    "vehicles",
+    "helicopter",
+    "planes",
+] as const;
+
+type SubCommand = typeof SUBCOMMANDS[number];
+const SUBCOMMANDS_LIST = SUBCOMMANDS.join(", ");
 
 const itemSubcommands: Record<string, BF6ItemLeaderboardKey> = {
     rpg: "rpg",
@@ -79,7 +83,7 @@ export default defineCommand({
         if (!sub) {
             await msg.reply(
                 "Te falta el subcommand máquina:\n" +
-                "kills, deaths, revives, score, rank, timePlayed, playStyle, bans, refresh, trackergg, rpg, mine, claymore, knife, frag, mbt, ifv, vehicles, helicopter, planes"
+                SUBCOMMANDS_LIST
             );
             return;
         }
@@ -154,15 +158,34 @@ export default defineCommand({
                     return;
                 }
 
+                const visibleRows = rows.slice(0, 20);
                 const valueLabel = sortBy === "timePlayed" ? "time" : "kills";
-                const valueFor = (kills: number, timePlayedDisplay: string) =>
-                    sortBy === "timePlayed" ? timePlayedDisplay : `${kills}`;
+                const playerColWidth = Math.max(
+                    "player".length,
+                    ...visibleRows.map((row) => row.platformUserHandle.length)
+                );
+                const fmtPlayer = (name: string) => name.padEnd(playerColWidth, " ");
+                const fmtValue = (kills: number, timePlayedDisplay: string) =>
+                    sortBy === "timePlayed"
+                        ? timePlayedDisplay.slice(0, 7).padEnd(7, " ")
+                        : `${kills}`.padStart(7, " ");
 
-                const content = rows
-                    .map((row) => `${row.platformUserHandle} - ${valueFor(row.kills, row.timePlayedDisplay)} ${valueLabel}`)
-                    .join("\n");
+                const tableRows = visibleRows.map((row, idx) =>
+                    `${String(idx + 1).padStart(2, " ")} | ${fmtPlayer(row.platformUserHandle)} | ${fmtValue(row.kills, row.timePlayedDisplay)}`
+                );
 
-                await msg.reply(`📊 **${itemTitles[itemSub]}** (${sortBy})\n${content}`);
+                const trimmedNote = rows.length > 20
+                    ? `\n...showing top 20/${rows.length} players`
+                    : "";
+
+                await msg.reply(
+                    `📊 **${itemTitles[itemSub]}** (${sortBy})\n` +
+                    "```text\n" +
+                    `#  | ${"player".padEnd(playerColWidth, " ")} | ${valueLabel.padEnd(7, " ")}\n` +
+                    tableRows.join("\n") +
+                    "\n```" +
+                    trimmedNote
+                );
                 return;
             }
 
@@ -271,7 +294,7 @@ export default defineCommand({
 
                 default:
                     await msg.reply(
-                        "Unknown subcommand. Available: kills, deaths, revives, score, rank, timePlayed, playStyle, bans, refresh, trackergg, rpg, mine, claymore, knife, frag, mbt, ifv, vehicles, helicopter, planes"
+                        `Unknown subcommand. Available: ${SUBCOMMANDS_LIST}`
                     );
                     return;
             }
