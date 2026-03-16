@@ -2,7 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import { db } from "../db/index";
-import { bf6ItemSnapshots, bf6Players, bf6Scrapes, bf6WeaponPlaystyles } from "../db/schema";
+import { bf6ItemSnapshots, bf6Players, bf6Scrapes, bf6WeaponPlaystyles, bf6ClassSnapshots } from "../db/schema";
 import { eq } from "drizzle-orm";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -85,10 +85,27 @@ export type BF6ItemSnapshot = {
     timePlayedDisplay: string;
 };
 
+export type BF6ClassKey = "kit_assault" | "kit_engineer" | "kit_support" | "kit_recon";
+
+export type BF6ClassSnapshot = {
+    playerId: string;
+    classKey: BF6ClassKey;
+    className: string;
+    timePlayedValue: number;
+    timePlayedDisplay: string;
+    kills: number;
+    deaths: number;
+    assists: number;
+    revives: number;
+    deployments: number;
+    kdRatio: number; // stored as basis points (x100)
+};
+
 type PlayerFetchResult = {
     rank: PlayerRank;
     weaponPlaystyles: WeaponPlaystyleSnapshot[];
     itemSnapshots: BF6ItemSnapshot[];
+    classSnapshots: BF6ClassSnapshot[];
 };
 
 function normalizeKey(value: string): string {
@@ -268,6 +285,57 @@ function extractItemSnapshots(playerId: string, payload: any): BF6ItemSnapshot[]
     });
 }
 
+const classKeys: BF6ClassKey[] = ["kit_assault", "kit_engineer", "kit_support", "kit_recon"];
+
+function extractClassSnapshots(playerId: string, payload: any): BF6ClassSnapshot[] {
+    const segments = Array.isArray(payload?.data?.segments) ? payload.data.segments : [];
+
+    const classSegments = segments.filter((segment: any) => {
+        const type = String(segment?.type ?? "").toLowerCase();
+        return type === "kit";
+    });
+
+    const result: BF6ClassSnapshot[] = [];
+
+    for (const classKey of classKeys) {
+        const matched = classSegments.find((segment: any) => {
+            const key = String(segment?.attributes?.key ?? "").toLowerCase();
+            return key === classKey;
+        });
+
+        if (!matched) continue;
+
+        const stats = matched?.stats ?? {};
+        const className = String(matched?.metadata?.name ?? classKey.replace("kit_", ""));
+        
+        const timePlayedValue = Math.round(getStatNumber(stats, ["timePlayed", "secondsPlayed"], ["timeplayed", "seconds"]));
+        const kills = Math.round(getStatNumber(stats, ["kills"], ["kills"]));
+        const deaths = Math.round(getStatNumber(stats, ["deaths"], ["deaths"]));
+        const assists = Math.round(getStatNumber(stats, ["assists"], ["assists"]));
+        const revives = Math.round(getStatNumber(stats, ["revives"], ["revives"]));
+        const deployments = Math.round(getStatNumber(stats, ["deployments"], ["deployments"]));
+        
+        const kdRatioRaw = getStatNumber(stats, ["kdRatio", "kd"], ["k/d", "kd"]);
+        const kdRatio = Math.round(kdRatioRaw * 100);
+
+        result.push({
+            playerId,
+            classKey,
+            className,
+            timePlayedValue,
+            timePlayedDisplay: formatDuration(timePlayedValue),
+            kills,
+            deaths,
+            assists,
+            revives,
+            deployments,
+            kdRatio,
+        });
+    }
+
+    return result;
+}
+
 function extractWeaponPlaystyles(playerId: string, payload: any): WeaponPlaystyleSnapshot[] {
     const allSegments = Array.isArray(payload?.data?.segments) ? payload.data.segments : [];
     const weaponSegments = allSegments.filter((segment: any) => {
@@ -379,6 +447,7 @@ async function fetchPlayerData(player: Player): Promise<PlayerFetchResult | null
         const platformUserHandle = data.data?.platformInfo?.platformUserHandle ?? "N/A";
         const weaponPlaystyles = extractWeaponPlaystyles(player.id, data);
         const itemSnapshots = extractItemSnapshots(player.id, data);
+        const classSnapshots = extractClassSnapshots(player.id, data);
 
         console.log(`✅ ${player.userName}: ${kills} kills`);
 
@@ -398,6 +467,7 @@ async function fetchPlayerData(player: Player): Promise<PlayerFetchResult | null
             },
             weaponPlaystyles,
             itemSnapshots,
+            classSnapshots,
         };
     } catch (error) {
         console.error(`❌ Failed to fetch ${player.userName}:`, error);
@@ -540,6 +610,27 @@ export async function updateBf6Data() {
                         kills: item.kills,
                         timePlayedValue: item.timePlayedValue,
                         timePlayedDisplay: item.timePlayedDisplay,
+                        scrapedAt,
+                    }))
+                );
+            }
+
+            // 5. Replace class snapshots for this player
+            await db.delete(bf6ClassSnapshots).where(eq(bf6ClassSnapshots.playerId, p.id));
+            if (entry.classSnapshots.length > 0) {
+                await db.insert(bf6ClassSnapshots).values(
+                    entry.classSnapshots.map((cls) => ({
+                        playerId: cls.playerId,
+                        classKey: cls.classKey,
+                        className: cls.className,
+                        timePlayedValue: cls.timePlayedValue,
+                        timePlayedDisplay: cls.timePlayedDisplay,
+                        kills: cls.kills,
+                        deaths: cls.deaths,
+                        assists: cls.assists,
+                        revives: cls.revives,
+                        deployments: cls.deployments,
+                        kdRatio: cls.kdRatio,
                         scrapedAt,
                     }))
                 );

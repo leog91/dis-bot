@@ -9,6 +9,9 @@ import {
     getPlayerWeaponPlaystyle,
     getProgressData,
     refreshBF6Data,
+    getPlayerClassStats,
+    getClassLeaderboard,
+    BF6ClassKey,
 } from "../../utils/bf6data";
 
 // ================= CONFIG =================
@@ -37,6 +40,11 @@ const SUBCOMMANDS = [
     "vehicles",
     "helicopter",
     "planes",
+    "class",
+    "assault",
+    "engineer",
+    "support",
+    "recon",
 ] as const;
 
 type SubCommand = typeof SUBCOMMANDS[number];
@@ -50,6 +58,10 @@ const SUBCOMMAND_ALIASES: Partial<Record<SubCommand, string[]>> = {
     timePlayed: ["time", "playtime"],
     trackergg: ["tracker", "tg", "nicks", "nick"],
     vehicles: ["vehicle", "veh"],
+    assault: ["aslt"],
+    engineer: ["eng"],
+    support: ["sup"],
+    recon: ["rec"],
 };
 
 function resolveSubcommand(raw: string | undefined): SubCommand | null {
@@ -169,7 +181,7 @@ export default defineCommand({
                     : "";
 
                 await msg.reply(
-                    `🎯 **${playstyle.platformUserHandle}** playStyle \n` +
+                    ` **${playstyle.platformUserHandle}** playStyle \n` +
                     "```text\n" +
                     "weapon      | time    | kills | ads/hip       | hs%    | acc%\n" +
                     rows.join("\n") +
@@ -211,7 +223,7 @@ export default defineCommand({
                     : "";
 
                 await msg.reply(
-                    `📊 **${itemTitles[itemSub]}** (${sortBy})\n` +
+                    ` **${itemTitles[itemSub]}** (${sortBy})\n` +
                     "```text\n" +
                     `#  | ${"player".padEnd(playerColWidth, " ")} | ${valueLabel.padEnd(7, " ")}\n` +
                     tableRows.join("\n") +
@@ -243,7 +255,7 @@ export default defineCommand({
 
             let sorted = bfdata;
             let content = "";
-            const prefix = isProgress ? `📈 **Progress (${timeLabel})**\n` : "";
+            const prefix = isProgress ? ` **Progress (${timeLabel})**\n` : "";
             const sign = isProgress ? "+" : "";
 
             switch (sub) {
@@ -322,6 +334,97 @@ export default defineCommand({
                 case "bans":
                     content = "pablocc74 - 1 ban";
                     break;
+
+                case "class": {
+                    const userArg = args.slice(1).join(" ").trim();
+                    if (!userArg) {
+                        await msg.reply("Usage: `bf6 class [user]`");
+                        return;
+                    }
+
+                    const playerClasses = await getPlayerClassStats(userArg);
+                    if (!playerClasses) {
+                        await msg.reply(`No BF6 player found for "${userArg}".`);
+                        return;
+                    }
+
+                    if (!playerClasses.classes.length) {
+                        await msg.reply(`No class data found for ${playerClasses.platformUserHandle}.`);
+                        return;
+                    }
+
+                    const fmtTime = (time: string) => time.slice(0, 7).padEnd(7, " ");
+                    const fmtK = (n: number) => String(n).padStart(5, " ");
+                    const fmtKD = (ratio: number) => (ratio / 100).toFixed(2);
+
+                    const rows = playerClasses.classes.map((cls) => {
+                        const kd = fmtKD(cls.kdRatio);
+                        return `${cls.className.padEnd(8)} | ${fmtTime(cls.timePlayedDisplay)} | ${kd.padStart(5)} | ${fmtK(cls.kills)} | ${fmtK(cls.deaths)} | ${fmtK(cls.assists)} | ${fmtK(cls.revives)} | ${fmtK(cls.deployments)}`;
+                    });
+
+                    await msg.reply(
+                        ` **${playerClasses.platformUserHandle}** Classes\n` +
+                        "```text\n" +
+                        "class    | time    | k/d   | kills | deaths|assists|revives| deploys\n" +
+                        rows.join("\n") +
+                        "\n```"
+                    );
+                    return;
+                }
+
+                case "assault":
+                case "engineer":
+                case "support":
+                case "recon": {
+                    const classKeyMap: Record<string, BF6ClassKey> = {
+                        assault: "kit_assault",
+                        engineer: "kit_engineer",
+                        support: "kit_support",
+                        recon: "kit_recon",
+                    };
+                    const classKey = classKeyMap[sub];
+                    const sortArg = args[1]?.toLowerCase();
+                    let sortBy: "kills" | "timePlayed" | "kd" | "deployments" = "kills";
+                    if (sortArg === "time" || sortArg === "timeplayed" || sortArg === "playtime") {
+                        sortBy = "timePlayed";
+                    } else if (sortArg === "kd" || sortArg === "k/d") {
+                        sortBy = "kd";
+                    } else if (sortArg === "deployments" || sortArg === "deploys") {
+                        sortBy = "deployments";
+                    }
+
+                    const classLeaderboard = await getClassLeaderboard(classKey, sortBy);
+                    const classDisplayName = sub.charAt(0).toUpperCase() + sub.slice(1);
+
+                    const visibleRows = classLeaderboard.slice(0, 15);
+                    const playerColWidth = Math.max(
+                        "player".length,
+                        ...visibleRows.map((row) => row.platformUserHandle.length)
+                    );
+                    const fmtPlayer = (name: string) => name.padEnd(playerColWidth, " ");
+                    const fmtTime = (time: string) => time.slice(0, 7).padEnd(7, " ");
+                    const fmtK = (n: number) => String(n).padStart(5, " ");
+                    const fmtKD = (ratio: number) => (ratio / 100).toFixed(2);
+
+                    const tableRows = visibleRows.map((row, idx) => {
+                        const kd = fmtKD(row.kdRatio);
+                        return `${String(idx + 1).padStart(2, " ")} | ${fmtPlayer(row.platformUserHandle)} | ${fmtTime(row.timePlayedDisplay)} | ${kd.padStart(5)} | ${fmtK(row.kills)} | ${fmtK(row.deaths)} | ${fmtK(row.assists)} | ${fmtK(row.revives)} | ${fmtK(row.deployments)}`;
+                    });
+
+                    const trimmedNote = classLeaderboard.length > 15
+                        ? `\n...showing top 15/${classLeaderboard.length} players`
+                        : "";
+
+                    await msg.reply(
+                        ` **${classDisplayName}** Class Leaderboard (${sortBy})\n` +
+                        "```text\n" +
+                        `#  | ${"player".padEnd(playerColWidth, " ")} | time    | k/d   | kills | deaths|assists|revives| deploys\n` +
+                        tableRows.join("\n") +
+                        "\n```" +
+                        trimmedNote
+                    );
+                    return;
+                }
 
 
                 default:

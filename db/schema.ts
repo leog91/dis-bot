@@ -62,6 +62,25 @@ export const bf6ItemSnapshots = sqliteTable('bf6_item_snapshots', {
     itemSortIdx: index('item_sort_idx').on(table.itemKey, table.kills, table.timePlayedValue),
 }));
 
+export const bf6ClassSnapshots = sqliteTable('bf6_class_snapshots', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    playerId: text('player_id').notNull().references(() => bf6Players.id),
+    classKey: text('class_key').notNull(), // kit_assault, kit_engineer, kit_support, kit_recon
+    className: text('class_name').notNull(), // Assault, Engineer, Support, Recon
+    timePlayedValue: integer('time_played_value').notNull(), // seconds
+    timePlayedDisplay: text('time_played_display').notNull(),
+    kills: integer('kills').notNull(),
+    deaths: integer('deaths').notNull(),
+    assists: integer('assists').notNull(),
+    revives: integer('revives').notNull(),
+    deployments: integer('deployments').notNull(),
+    kdRatio: integer('kd_ratio').notNull(), // stored as basis points (x100)
+    scrapedAt: integer('scraped_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+    playerClassUq: uniqueIndex('player_class_uq').on(table.playerId, table.classKey),
+    classSortIdx: index('class_sort_idx').on(table.classKey, table.kills, table.timePlayedValue),
+}));
+
 export const pins = sqliteTable('pins', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     serverId: text('server_id').notNull(),

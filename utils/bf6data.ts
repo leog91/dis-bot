@@ -1,5 +1,5 @@
 import { db } from "../db/index";
-import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6WeaponPlaystyles } from "../db/schema";
+import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6WeaponPlaystyles, bf6ClassSnapshots } from "../db/schema";
 import { desc, eq, sql, and, lt, gt, inArray, lte } from "drizzle-orm";
 import { PlayerRank, updateBf6Data } from "./bf6rank";
 
@@ -328,4 +328,146 @@ export async function getItemLeaderboard(
         if (sortBy === "timePlayed") return b.timePlayedValue - a.timePlayedValue;
         return b.kills - a.kills;
     });
+}
+
+export type BF6ClassKey = "kit_assault" | "kit_engineer" | "kit_support" | "kit_recon";
+
+type ClassSnapshotRow = {
+    playerId: string;
+    classKey: string;
+    className: string;
+    timePlayedValue: number;
+    timePlayedDisplay: string;
+    kills: number;
+    deaths: number;
+    assists: number;
+    revives: number;
+    deployments: number;
+    kdRatio: number;
+};
+
+export type BF6ClassLeaderboardRow = {
+    playerId: string;
+    user: string;
+    platformUserHandle: string;
+    profileUrl: string;
+    className: string;
+    timePlayedValue: number;
+    timePlayedDisplay: string;
+    kills: number;
+    deaths: number;
+    assists: number;
+    revives: number;
+    deployments: number;
+    kdRatio: number;
+};
+
+export async function getClassLeaderboard(
+    classKey: BF6ClassKey,
+    sortBy: "kills" | "timePlayed" | "kd" | "deployments" = "kills"
+): Promise<BF6ClassLeaderboardRow[]> {
+    await getBF6Data();
+
+    const trackedPlayers = await db.select({
+        id: bf6Players.id,
+        user: bf6Players.user,
+        platformUserHandle: bf6Players.platformUserHandle,
+        profileUrl: bf6Players.profileUrl,
+    }).from(bf6Players);
+
+    const snapshots = await db.select({
+        playerId: bf6ClassSnapshots.playerId,
+        classKey: bf6ClassSnapshots.classKey,
+        className: bf6ClassSnapshots.className,
+        timePlayedValue: bf6ClassSnapshots.timePlayedValue,
+        timePlayedDisplay: bf6ClassSnapshots.timePlayedDisplay,
+        kills: bf6ClassSnapshots.kills,
+        deaths: bf6ClassSnapshots.deaths,
+        assists: bf6ClassSnapshots.assists,
+        revives: bf6ClassSnapshots.revives,
+        deployments: bf6ClassSnapshots.deployments,
+        kdRatio: bf6ClassSnapshots.kdRatio,
+    })
+        .from(bf6ClassSnapshots)
+        .where(eq(bf6ClassSnapshots.classKey, classKey)) as unknown as ClassSnapshotRow[];
+
+    const snapshotByPlayer = new Map(
+        snapshots.map((s) => [s.playerId, s])
+    );
+
+    const rows: BF6ClassLeaderboardRow[] = trackedPlayers.map((player) => {
+        const snap = snapshotByPlayer.get(player.id);
+        return {
+            playerId: player.id,
+            user: player.user,
+            platformUserHandle: player.platformUserHandle,
+            profileUrl: player.profileUrl,
+            className: snap?.className ?? classKey.replace("kit_", ""),
+            timePlayedValue: snap?.timePlayedValue ?? 0,
+            timePlayedDisplay: snap?.timePlayedDisplay ?? "0s",
+            kills: snap?.kills ?? 0,
+            deaths: snap?.deaths ?? 0,
+            assists: snap?.assists ?? 0,
+            revives: snap?.revives ?? 0,
+            deployments: snap?.deployments ?? 0,
+            kdRatio: snap?.kdRatio ?? 0,
+        };
+    });
+
+    return [...rows].sort((a, b) => {
+        switch (sortBy) {
+            case "timePlayed": return b.timePlayedValue - a.timePlayedValue;
+            case "kd": return b.kdRatio - a.kdRatio;
+            case "deployments": return b.deployments - a.deployments;
+            default: return b.kills - a.kills;
+        }
+    });
+}
+
+export async function getPlayerClassStats(userInput: string) {
+    const normalized = userInput.trim().toLowerCase();
+    if (!normalized) return null;
+
+    const players = await db.select({
+        id: bf6Players.id,
+        platformUserHandle: bf6Players.platformUserHandle,
+        user: bf6Players.user,
+    }).from(bf6Players);
+
+    const exact = players.find((p) =>
+        p.id.toLowerCase() === normalized ||
+        p.user.toLowerCase() === normalized ||
+        p.platformUserHandle.toLowerCase() === normalized
+    );
+
+    const contains = players.find((p) =>
+        p.user.toLowerCase().includes(normalized) ||
+        p.platformUserHandle.toLowerCase().includes(normalized)
+    );
+
+    const matched = exact ?? contains;
+    if (!matched) return null;
+
+    const classes = await db.select({
+        classKey: bf6ClassSnapshots.classKey,
+        className: bf6ClassSnapshots.className,
+        timePlayedValue: bf6ClassSnapshots.timePlayedValue,
+        timePlayedDisplay: bf6ClassSnapshots.timePlayedDisplay,
+        kills: bf6ClassSnapshots.kills,
+        deaths: bf6ClassSnapshots.deaths,
+        assists: bf6ClassSnapshots.assists,
+        revives: bf6ClassSnapshots.revives,
+        deployments: bf6ClassSnapshots.deployments,
+        kdRatio: bf6ClassSnapshots.kdRatio,
+    })
+        .from(bf6ClassSnapshots)
+        .where(eq(bf6ClassSnapshots.playerId, matched.id))
+        .orderBy(desc(bf6ClassSnapshots.timePlayedValue)) as unknown as Omit<ClassSnapshotRow, "playerId" | "classKey">[];
+
+    return {
+        playerId: matched.id,
+        user: matched.user,
+        platformUserHandle: matched.platformUserHandle,
+        classes,
+    };
 }
