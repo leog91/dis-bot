@@ -65,6 +65,7 @@ export type WeaponPlaystyleSnapshot = {
 
 export type BF6ItemSnapshotKey =
     | "rpg"
+    | "c4"
     | "mines"
     | "m15"
     | "m18a1"
@@ -159,6 +160,7 @@ function formatDuration(seconds: number): string {
 
 const itemSnapshotKeys: BF6ItemSnapshotKey[] = [
     "rpg",
+    "c4",
     "mines",
     "m15",
     "m18a1",
@@ -182,6 +184,8 @@ function segmentMatchesItem(segment: any, item: BF6ItemSnapshotKey): boolean {
     switch (item) {
         case "rpg":
             return type === "gadget" && (key === "gad_rl_ungui" || name.includes("rpg"));
+        case "c4":
+            return type === "gadget" && (key === "gad_c4" || name.includes("c-4") || name.includes("c4"));
         case "mines":
             return type === "gadget" && (key.includes("gad_mine") || subcategory.includes("mine") || categoryName.includes("mine"));
         case "m15":

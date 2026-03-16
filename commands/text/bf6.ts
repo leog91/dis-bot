@@ -27,6 +27,7 @@ const SUBCOMMANDS = [
     "refresh",
     "trackergg",
     "rpg",
+    "c4",
     "mine",
     "claymore",
     "knife",
@@ -44,6 +45,7 @@ const SUBCOMMANDS_LIST = SUBCOMMANDS.join(", ");
 const SUBCOMMAND_ALIASES: Partial<Record<SubCommand, string[]>> = {
     helicopter: ["heli", "chopper"],
     claymore: ["m18", "m18a1"],
+    c4: ["c-4", "c4"],
     mine: ["m15"],
     timePlayed: ["time", "playtime"],
     trackergg: ["tracker", "tg", "nicks", "nick"],
@@ -69,6 +71,7 @@ function resolveSubcommand(raw: string | undefined): SubCommand | null {
 
 const itemSubcommands: Record<string, BF6ItemLeaderboardKey> = {
     rpg: "rpg",
+    c4: "c4",
     mine: "m15",
     claymore: "m18a1",
     knife: "knife",
@@ -82,6 +85,7 @@ const itemSubcommands: Record<string, BF6ItemLeaderboardKey> = {
 
 const itemTitles: Record<BF6ItemLeaderboardKey, string> = {
     rpg: "RPG",
+    c4: "C-4 Explosive",
     mines: "Mines",
     m15: "M15 Mine",
     m18a1: "Claymore (M18A1)",

@@ -9,6 +9,7 @@ const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
 
 export type BF6ItemLeaderboardKey =
     | "rpg"
+    | "c4"
     | "mines"
     | "m15"
     | "m18a1"
