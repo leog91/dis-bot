@@ -15,6 +15,7 @@ export type BF6ItemLeaderboardKey =
     | "m18a1"
     | "knife"
     | "frag"
+    | "sledgehammer"
     | "mbt"
     | "ifv"
     | "vehicles"

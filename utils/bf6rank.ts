@@ -71,6 +71,7 @@ export type BF6ItemSnapshotKey =
     | "m18a1"
     | "knife"
     | "frag"
+    | "sledgehammer"
     | "mbt"
     | "ifv"
     | "vehicles"
@@ -183,6 +184,7 @@ const itemSnapshotKeys: BF6ItemSnapshotKey[] = [
     "m18a1",
     "knife",
     "frag",
+    "sledgehammer",
     "mbt",
     "ifv",
     "vehicles",
@@ -224,6 +226,12 @@ function segmentMatchesItem(segment: any, item: BF6ItemSnapshotKey): boolean {
                 name.includes("frag grenade") ||
                 name.includes("grenade") && name.includes("frag") ||
                 key.includes("frag")
+            );
+        case "sledgehammer":
+            return type === "gadget" && (
+                name.includes("Sledgehammer") ||
+
+                key.includes("melee_heavy_sledge")
             );
         case "mbt":
             return (
@@ -307,14 +315,14 @@ function extractClassSnapshots(playerId: string, payload: any): BF6ClassSnapshot
 
         const stats = matched?.stats ?? {};
         const className = String(matched?.metadata?.name ?? classKey.replace("kit_", ""));
-        
+
         const timePlayedValue = Math.round(getStatNumber(stats, ["timePlayed", "secondsPlayed"], ["timeplayed", "seconds"]));
         const kills = Math.round(getStatNumber(stats, ["kills"], ["kills"]));
         const deaths = Math.round(getStatNumber(stats, ["deaths"], ["deaths"]));
         const assists = Math.round(getStatNumber(stats, ["assists"], ["assists"]));
         const revives = Math.round(getStatNumber(stats, ["revives"], ["revives"]));
         const deployments = Math.round(getStatNumber(stats, ["deployments"], ["deployments"]));
-        
+
         const kdRatioRaw = getStatNumber(stats, ["kdRatio", "kd"], ["k/d", "kd"]);
         const kdRatio = Math.round(kdRatioRaw * 100);
 
