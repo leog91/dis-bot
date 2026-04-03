@@ -2,6 +2,48 @@ import { Message } from "discord.js";
 import { defineCommand } from "..";
 import fetch from "node-fetch";
 
+interface GeoResult {
+    latitude: number;
+    longitude: number;
+    name: string;
+    country: string;
+    country_code: string;
+}
+
+interface GeoResponse {
+    results?: GeoResult[];
+}
+
+interface WeatherResponse {
+    current_weather: {
+        temperature: number;
+        windspeed: number;
+        winddirection: number;
+        weathercode: number;
+        time: string;
+    };
+    hourly: {
+        time: string[];
+        relative_humidity_2m: number[];
+        apparent_temperature: number[];
+        precipitation: number[];
+        cloud_cover: number[];
+        surface_pressure: number[];
+        uv_index: number[];
+    };
+    daily: {
+        time: string[];
+        temperature_2m_max: number[];
+        temperature_2m_min: number[];
+        precipitation_sum: number[];
+        precipitation_probability_max: number[];
+        uv_index_max: number[];
+        sunrise: string[];
+        sunset: string[];
+        weathercode?: number[];
+    };
+}
+
 export default defineCommand({
     name: "weather",
     description: "Get current weather for a city",
@@ -15,7 +57,9 @@ export default defineCommand({
 
         const city = args[0];
         const countryCode = args[1]?.toUpperCase();
-        msg.channel.sendTyping();
+        if ("sendTyping" in msg.channel) {
+            msg.channel.sendTyping();
+        }
 
         try {
             let geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=5`;
@@ -23,26 +67,22 @@ export default defineCommand({
                 geoUrl += `&country_codes=${countryCode}`;
             }
             const geoRes = await fetch(geoUrl);
-            const geoData = await geoRes.json();
+            const geoData = await geoRes.json() as GeoResponse;
 
             if (!geoData.results || geoData.results.length === 0) {
                 msg.reply(`City "${city}" not found.`);
                 return;
             }
 
-            let result: { latitude: number; longitude: number; name: string; country: string; country_code: string };
-            if (countryCode) {
-                result = geoData.results.find((r: { country_code: string }) => r.country_code.toUpperCase() === countryCode) ?? geoData.results[0];
-            } else {
-                const arResult = geoData.results.find((r: { country_code: string }) => r.country_code === "AR");
-                result = arResult ?? geoData.results[0];
-            }
+            const result = countryCode
+                ? geoData.results.find((r: { country_code: string }) => r.country_code.toUpperCase() === countryCode) ?? geoData.results[0]
+                : geoData.results.find((r: { country_code: string }) => r.country_code === "AR") ?? geoData.results[0];
             const { latitude: lat, longitude: lon, name, country, country_code } = result;
 
             const weatherRes = await fetch(
                 `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relative_humidity_2m,apparent_temperature,precipitation,cloud_cover,surface_pressure,uv_index&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,uv_index_max,sunrise,sunset,weathercode&timezone=auto`
             );
-            const weatherData = await weatherRes.json();
+            const weatherData = await weatherRes.json() as WeatherResponse;
             const weather = weatherData.current_weather;
             const hourly = weatherData.hourly;
             const daily = weatherData.daily;
