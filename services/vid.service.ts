@@ -45,11 +45,6 @@ const ffmpegBinary = ffmpegPath as unknown as string | null;
 
 const formatMb = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
-const isDirectMediaUrl = (value: string) => {
-    const normalized = value.toLowerCase();
-    return [".mp4", ".mov", ".webm", ".m4v"].some((ext) => normalized.includes(ext));
-};
-
 const pickBestDirectUrl = (stdoutText: string) => {
     const urls = stdoutText
         .split("\n")
@@ -230,6 +225,30 @@ const shortenUrl = async (url: string) => {
     return shortRes.text();
 };
 
+const getShorterUrlIfAvailable = async (url: string) => {
+    try {
+        const shortenedUrl = (await shortenUrl(url)).trim();
+
+        if (!shortenedUrl) {
+            return url;
+        }
+
+        try {
+            const parsedShortUrl = new URL(shortenedUrl);
+            if (parsedShortUrl.hostname !== "is.gd") {
+                return url;
+            }
+        } catch {
+            return url;
+        }
+
+        return shortenedUrl.length < url.length ? shortenedUrl : url;
+    } catch (err) {
+        console.error("Failed to shorten URL:", err);
+        return url;
+    }
+};
+
 const buildAttempts = ({ isTwitterLike, isRedditLike }: VidSourceInfo) => {
     const defaultAttempts: YtDlpAttempt[] = [
         { format: "b" },
@@ -403,5 +422,5 @@ export const resolveVidOutputUrl = async (url: string, sourceInfo: VidSourceInfo
         directUrl = url;
     }
 
-    return isDirectMediaUrl(directUrl) ? directUrl : shortenUrl(directUrl);
+    return getShorterUrlIfAvailable(directUrl);
 };
