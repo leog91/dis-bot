@@ -120,3 +120,4 @@ dist
 .pnp.*
 temp/trackkergg.json
 AGENTS.md
+.codex
