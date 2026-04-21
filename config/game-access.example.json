@@ -1,0 +1,36 @@
+{
+  "games": {
+    "helldivers-2": {
+      "title": "Helldivers 2",
+      "aliases": ["hd2", "helldivers2"],
+      "credentials": {
+        "email": "account@example.com",
+        "username": "account@example.com",
+        "password": "replace-me-in-private-config",
+        "lines": ["Steam Guard code is handled by admins if prompted."],
+        "extra": ["Do not change the password or recovery email."]
+      },
+      "guide": {
+        "launcher": "Steam",
+        "summary": "Install the launcher first, then sign in with the account.",
+        "steps": [
+          "Open Steam and install Helldivers 2 from the library.",
+          "Wait for the first launch to finish shader compilation."
+        ],
+        "loginInstructions": [
+          "Use the credentials from the `account` command DM.",
+          "If Steam Guard appears, contact an admin instead of retrying repeatedly."
+        ],
+        "recommendedSettings": [
+          "Run borderless fullscreen for easier alt-tab behavior.",
+          "Reduce volumetric fog if performance drops."
+        ],
+        "troubleshooting": [
+          "If the game loops on launch, verify the game files.",
+          "If login fails, confirm the password was copied without extra spaces."
+        ],
+        "notes": ["Only use this account for the purchased game access."]
+      }
+    }
+  }
+}

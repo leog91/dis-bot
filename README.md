@@ -18,7 +18,7 @@ Private commands override public ones by name, and private audio/assets are sear
 1. Install dependencies:
 
 ```
-npm install
+bun install
 ```
 
 2. Create a `.env` file with at least:
@@ -35,6 +35,8 @@ ASSETS_PRIVATE_DIR=/home/user/repo/dis-bot-assets-private
 PRIVATE_COMMANDS_DIR=/home/user/repo/dis-bot-assets-private/commands
 BF6_PLAYERS_CONFIG_PATH=/home/user/repo/dis-bot-assets-private/config/bf6players.json
 CRASH_COUNTER_FILE_PATH=/home/user/repo/dis-bot-assets-private/crashcounter.json
+GAME_ACCESS_CONFIG_PATH=/home/user/repo/dis-bot-assets-private/config/game-access.json
+PRIVATE_USERS_CONFIG_PATH=/home/user/repo/dis-bot-assets-private/config/users.json
 ```
 
 `DB_FILE_PATH` can be absolute or relative to this repo directory. `DB_FILE_NAME` is still
@@ -43,19 +45,21 @@ accepted for backward compatibility, but `DB_FILE_PATH` is preferred.
 defaults to `${ASSETS_PRIVATE_DIR}/config/bf6players.json`.
 `CRASH_COUNTER_FILE_PATH` is optional; if not set and `ASSETS_PRIVATE_DIR` is set, the bot
 defaults to `${ASSETS_PRIVATE_DIR}/crashcounter.json`.
+`GAME_ACCESS_CONFIG_PATH` is optional; if not set and `ASSETS_PRIVATE_DIR` is set, the bot
+defaults to `${ASSETS_PRIVATE_DIR}/config/game-access.json`.
+`PRIVATE_USERS_CONFIG_PATH` is optional; if not set and `ASSETS_PRIVATE_DIR` is set, the bot
+defaults to `${ASSETS_PRIVATE_DIR}/config/users.json`.
 
 4. Run the bot:
 
 ```
-bun run index.ts
+bun run dev
 ```
 
 On startup, Drizzle migrations are applied automatically to the configured `DB_FILE_PATH`.
 You can also run them manually:
 
-```
-npm run db:migrate
-```
+`bun run db:migrate`
 
 ## Private Assets
 
@@ -89,6 +93,41 @@ When set, the bot searches:
 2. `assets/audio/...` (public repo)
 
 This keeps your public GitHub repo clean while still letting private, server-specific assets work.
+
+## Private Game Access
+
+Use the existing public/private split for account delivery as well:
+
+1. Keep the real user registry, buyer mapping, credentials, and guides in your private repo.
+2. Point the bot at that file with `GAME_ACCESS_CONFIG_PATH`, or let it default to
+   `${ASSETS_PRIVATE_DIR}/config/game-access.json`.
+3. Keep user purchase data in `PRIVATE_USERS_CONFIG_PATH`, or let it default to
+   `${ASSETS_PRIVATE_DIR}/config/users.json`.
+4. Use the public example file at `config/game-access.example.json` as the schema reference only.
+
+Recommended private structure:
+
+```
+/home/user/repo/dis-bot-assets-private/
+  config/
+    users.json
+    game-access.json
+```
+
+Supported command format:
+
+```
+account game:helldivers 2
+guide game:helldivers 2
+```
+
+Security notes:
+
+- `account` never posts credentials in a public channel.
+- Buyers are matched by Discord user ID from the private `users.json` purchase list.
+- Friendly user keys like `leog` can live in `users.json`, while `game-access.json` stays focused on credentials and guides.
+- If a DM cannot be delivered, the bot only tells the user to enable DMs and retry.
+- The config file is reloaded automatically when admins update it on disk.
 
 ## Private Commands
 
@@ -151,7 +190,7 @@ command files that require private IDs.
 To validate types across public + private commands:
 
 ```
-npm run typecheck:private
+bun run typecheck:private
 ```
 
 This uses `tsconfig.private.json` which includes:
