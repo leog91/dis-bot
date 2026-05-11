@@ -191,8 +191,9 @@ export async function getProgressData(daysInfo: string): Promise<{ data: any[], 
  * Gets BF6 data from cache or fetches fresh data if stale
  */
 export async function getBF6Data(): Promise<any[]> {
+    let latestScrapes: any[] | null = null;
     try {
-        const latestScrapes = await getLatestScrapes();
+        latestScrapes = await getLatestScrapes();
 
         if (!latestScrapes.length) {
             console.log("No DB data found. Will fetch fresh data.");
@@ -207,16 +208,29 @@ export async function getBF6Data(): Promise<any[]> {
 
         if (age < CACHE_DURATION) {
             return latestScrapes;
-        } else {
-            console.log("DB data stale. Will fetch fresh data.");
-            return await updateBf6Data();
         }
+
+        console.log("DB data stale. Will fetch fresh data.");
+        const fresh = await updateBf6Data();
+        if (fresh.length > 0) return fresh;
+
+        console.log("API fetch failed. Falling back to stale DB data.");
+        return latestScrapes;
 
     } catch (err) {
         console.error("DB Error:", err);
         console.log("Fallback to direct fetch.");
     }
-    return await updateBf6Data();
+
+    const fresh = await updateBf6Data();
+    if (fresh.length > 0) return fresh;
+
+    if (latestScrapes && latestScrapes.length > 0) {
+        console.log("API fetch failed. Falling back to stale DB data.");
+        return latestScrapes;
+    }
+
+    return [];
 }
 
 /**
