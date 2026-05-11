@@ -1,13 +1,18 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": ["node"],
+    "types": ["node", "bun-types"],
+    "baseUrl": ".",
+    "paths": {
+      "discord.js": ["node_modules/discord.js"],
+      "discord.js/*": ["node_modules/discord.js/*"]
+    },
     "noEmit": true
   },
   "include": [

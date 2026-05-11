@@ -10,7 +10,8 @@
     "dev-logging-watch": "bun run dev-logging & tail -f logs/log-$(date +%Y-%m-%d).txt",
     "sync-private-assets": "bash scripts/sync-private-assets.sh",
     "db:migrate": "bunx drizzle-kit migrate",
-    "typecheck:private": "bunx tsc -p tsconfig.private.json",
+    "typecheck": "bunx --bun tsc -p tsconfig.private.json",
+    "typecheck:private": "bunx --bun tsc -p tsconfig.private.json",
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

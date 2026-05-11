@@ -70,9 +70,10 @@ export default defineCommand({
                     return;
                 }
 
+                const notice = "notice" in redditResult ? redditResult.notice : undefined;
                 const outputUrl = await resolveVidOutputUrl(url, sourceInfo);
                 await progress.update("Couldn't upload the video, sending the link instead...");
-                await sendVidResponse(msg, outputUrl, redditResult.notice, progress);
+                await sendVidResponse(msg, outputUrl, notice, progress);
                 return;
             }
 

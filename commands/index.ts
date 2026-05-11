@@ -10,13 +10,15 @@ export type PermissionRule =
     | { type: "OWNER" }
     | { type: "CUSTOM"; check: (msg: Message) => boolean | Promise<boolean> };
 
+type CommandMessage = Message & { channel: any };
+
 export interface Command {
     name: string;
     description: string;
     type: "TEXT" | "AUDIO";
     permissions?: PermissionRule[];
     hidden?: boolean;
-    execute: (msg: Message, args: string[]) => Promise<void>;
+    execute: (msg: CommandMessage, args: string[]) => Promise<void>;
 }
 
 
@@ -97,5 +99,3 @@ export async function hasPermission(
 
     return true;
 }
-
-
