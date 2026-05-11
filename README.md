@@ -1,5 +1,12 @@
 # dis-bot
 
+## Documentation
+
+The project includes an interactive DeepWiki index with architecture,
+code explanations, dependency mapping, and repository navigation.
+
+- DeepWiki: https://deepwiki.com/leog91/dis-bot
+
 ## Overview
 
 `dis-bot` is a Discord bot with text and audio commands. It supports a split setup where
@@ -168,9 +175,7 @@ Commands support permission rules via `permissions`:
 Example:
 
 ```ts
-permissions: [
-  { type: "GUILD", ids: [guilds.Bytes, guilds.plll] }
-]
+permissions: [{ type: "GUILD", ids: [guilds.Bytes, guilds.plll] }];
 ```
 
 For sensitive/server-specific commands, keep the command files in `dis-bot-assets-private/commands`.
