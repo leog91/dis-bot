@@ -21,10 +21,14 @@ export default async function onReady(client: Client) {
 
     await bf6Service.load();
     if (bf6Service.isExpired()) {
-        bf6Service.update();
+        await bf6Service.update();
     }
 
     //6 hours
-    setInterval(() => bf6Service.update(), 1000 * 60 * 60 * 6);
+    setInterval(() => {
+        bf6Service.update().catch((error) => {
+            console.error("❌ Scheduled BF6 update failed:", error);
+        });
+    }, 1000 * 60 * 60 * 6);
 
 }

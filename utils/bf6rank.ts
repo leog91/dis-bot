@@ -519,7 +519,9 @@ export async function bf6Rank(): Promise<PlayerRank[]> {
     return playerRank;
 }
 
-export async function updateBf6Data() {
+let updateBf6DataPromise: Promise<PlayerRank[]> | null = null;
+
+async function runBf6DataUpdate() {
     const results: PlayerRank[] = [];
     const fetchedResults: PlayerFetchResult[] = [];
     const players = await loadPlayers();
@@ -650,4 +652,17 @@ export async function updateBf6Data() {
     }
 
     return results;
+}
+
+export async function updateBf6Data() {
+    if (updateBf6DataPromise) {
+        console.log("BF6 update already running; waiting for the current update.");
+        return updateBf6DataPromise;
+    }
+
+    updateBf6DataPromise = runBf6DataUpdate().finally(() => {
+        updateBf6DataPromise = null;
+    });
+
+    return updateBf6DataPromise;
 }
