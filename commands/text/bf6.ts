@@ -55,7 +55,7 @@ const SUBCOMMAND_ALIASES: Partial<Record<SubCommand, string[]>> = {
     helicopter: ["heli", "chopper"],
     claymore: ["m18", "m18a1"],
     c4: ["c-4", "c4"],
-    mine: ["m15"],
+    mine: ["m15", "mines"],
     sledgehammer: ["sledge", "hammer"],
     timePlayed: ["time", "playtime", "hours"],
     trackergg: ["tracker", "tg", "nicks", "nick"],
