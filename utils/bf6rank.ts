@@ -1,7 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
-import { db } from "../db/index";
 import { bf6ItemSnapshots, bf6Players, bf6Scrapes, bf6WeaponPlaystyles, bf6ClassSnapshots } from "../db/schema";
 import { eq } from "drizzle-orm";
 
@@ -109,11 +108,11 @@ type PlayerFetchResult = {
     classSnapshots: BF6ClassSnapshot[];
 };
 
-function normalizeKey(value: string): string {
+export function normalizeKey(value: string): string {
     return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function getStatEntry(stats: Record<string, any>, exactCandidates: string[], fuzzyIncludes: string[] = []) {
+export function getStatEntry(stats: Record<string, any>, exactCandidates: string[], fuzzyIncludes: string[] = []) {
     const entries = Object.entries(stats ?? {});
     if (!entries.length) return null;
 
@@ -135,7 +134,7 @@ function getStatEntry(stats: Record<string, any>, exactCandidates: string[], fuz
     return null;
 }
 
-function getStatNumber(stats: Record<string, any>, exactCandidates: string[], fuzzyIncludes: string[] = []): number {
+export function getStatNumber(stats: Record<string, any>, exactCandidates: string[], fuzzyIncludes: string[] = []): number {
     const entry = getStatEntry(stats, exactCandidates, fuzzyIncludes);
     const value = Number(entry?.value ?? 0);
     return Number.isFinite(value) ? value : 0;
@@ -147,26 +146,26 @@ function getStatDisplay(stats: Record<string, any>, exactCandidates: string[], f
     return typeof displayValue === "string" ? displayValue : null;
 }
 
-function clampPercent(percent: number): number {
+export function clampPercent(percent: number): number {
     if (!Number.isFinite(percent)) return 0;
     return Math.max(0, Math.min(100, percent));
 }
 
-function normalizePercent(raw: number): number {
+export function normalizePercent(raw: number): number {
     if (!Number.isFinite(raw) || raw <= 0) return 0;
     // Tracker endpoints can expose percentages either as 0..1 or 0..100.
     return raw <= 1 ? raw * 100 : raw;
 }
 
-function toBasisPoints(percent: number): number {
+export function toBasisPoints(percent: number): number {
     return Math.round(clampPercent(percent) * 100);
 }
 
-function formatHours(seconds: number): string {
+export function formatHours(seconds: number): string {
     return `${(seconds / 3600).toFixed(1)}h`;
 }
 
-function formatDuration(seconds: number): string {
+export function formatDuration(seconds: number): string {
     const safe = Math.max(0, Math.round(seconds));
     const hours = Math.floor(safe / 3600);
     const mins = Math.floor((safe % 3600) / 60);
@@ -229,8 +228,7 @@ function segmentMatchesItem(segment: any, item: BF6ItemSnapshotKey): boolean {
             );
         case "sledgehammer":
             return type === "gadget" && (
-                name.includes("Sledgehammer") ||
-
+                name.includes("sledgehammer") ||
                 key.includes("melee_heavy_sledge")
             );
         case "mbt":
@@ -273,7 +271,7 @@ function segmentMatchesItem(segment: any, item: BF6ItemSnapshotKey): boolean {
     }
 }
 
-function extractItemSnapshots(playerId: string, payload: any): BF6ItemSnapshot[] {
+export function extractItemSnapshots(playerId: string, payload: any): BF6ItemSnapshot[] {
     const segments = Array.isArray(payload?.data?.segments) ? payload.data.segments : [];
 
     return itemSnapshotKeys.map((itemKey) => {
@@ -295,7 +293,7 @@ function extractItemSnapshots(playerId: string, payload: any): BF6ItemSnapshot[]
 
 const classKeys: BF6ClassKey[] = ["kit_assault", "kit_engineer", "kit_support", "kit_recon"];
 
-function extractClassSnapshots(playerId: string, payload: any): BF6ClassSnapshot[] {
+export function extractClassSnapshots(playerId: string, payload: any): BF6ClassSnapshot[] {
     const segments = Array.isArray(payload?.data?.segments) ? payload.data.segments : [];
 
     const classSegments = segments.filter((segment: any) => {
@@ -344,7 +342,7 @@ function extractClassSnapshots(playerId: string, payload: any): BF6ClassSnapshot
     return result;
 }
 
-function extractWeaponPlaystyles(playerId: string, payload: any): WeaponPlaystyleSnapshot[] {
+export function extractWeaponPlaystyles(playerId: string, payload: any): WeaponPlaystyleSnapshot[] {
     const allSegments = Array.isArray(payload?.data?.segments) ? payload.data.segments : [];
     const weaponSegments = allSegments.filter((segment: any) => {
         const type = String(segment?.type ?? "").toLowerCase();
@@ -371,8 +369,8 @@ function extractWeaponPlaystyles(playerId: string, payload: any): WeaponPlaystyl
             formatHours(timePlayedValue);
 
         const adsKills = Math.round(getStatNumber(stats, ["adsKills", "killsAds", "killsADS"], ["adskills", "aimdownsights"]));
-        const hipfireKills = Math.round(getStatNumber(stats, ["hipfireKills", "killsHipfire", "killsHipFire"], ["hipfire"]));
-        const headshots = Math.round(getStatNumber(stats, ["headshots", "headshotKills", "killsHeadshot"], ["headshot"]));
+        const hipfireKills = Math.round(getStatNumber(stats, ["hipfireKills", "killsHipfire", "killsHipFire"], ["hipfirekills", "killshipfire"]));
+        const headshots = Math.round(getStatNumber(stats, ["headshots", "headshotKills", "killsHeadshot"], ["headshotkills", "killsheadshot"]));
         const shotsHit = Math.round(getStatNumber(stats, ["shotsHit", "hits", "bulletsHit"], ["shotshit", "hits"]));
         const shotsFired = Math.round(getStatNumber(stats, ["shotsFired", "bulletsFired"], ["shotsfired", "fired"]));
 
@@ -395,7 +393,7 @@ function extractWeaponPlaystyles(playerId: string, payload: any): WeaponPlaystyl
             }
         }
 
-        const headshotPct = kills > 0 ? (headshots / kills) * 100 : headshotPctDirect;
+        const headshotPct = kills > 0 && headshots > 0 ? (headshots / kills) * 100 : headshotPctDirect;
         const accuracyPct = shotsFired > 0 ? (shotsHit / shotsFired) * 100 : accuracyPctDirect;
 
         const snapshot: WeaponPlaystyleSnapshot = {
@@ -551,6 +549,7 @@ async function runBf6DataUpdate() {
     // DB Persistence
     try {
         console.log("💾 Saving to database...");
+        const { db } = await import("../db/index");
         const scrapedAt = new Date();
 
         for (const entry of fetchedResults) {
