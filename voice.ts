@@ -143,6 +143,8 @@ export class GuildVoiceManager {
     connection: VoiceConnection | null = null;
     player: AudioPlayer | null = null;
     randomQueues = new Map<string, string[]>();
+    queue: string[] = [];
+    currentMsg: Message | null = null;
 
     constructor(guildId: string) {
         this.guildId = guildId;
@@ -166,10 +168,35 @@ export class GuildVoiceManager {
 
         if (!this.player) {
             this.player = createAudioPlayer();
+            this.player.on(AudioPlayerStatus.Idle, () => {
+                if (this.queue.length > 0 && this.currentMsg) {
+                    const nextFile = this.queue.shift()!;
+                    this.playResource(nextFile);
+                }
+            });
+            this.player.on("error", (err) => {
+                console.error("Audio player error:", err);
+                if (this.currentMsg) {
+                    this.currentMsg.reply("⚠️ Audio playback error.");
+                }
+                if (this.queue.length > 0 && this.currentMsg) {
+                    const nextFile = this.queue.shift()!;
+                    this.playResource(nextFile);
+                }
+            });
             this.connection.subscribe(this.player);
         }
 
         return this.player;
+    }
+
+    private playResource(filePath: string) {
+        if (!this.player) return;
+        const inputType = filePath.endsWith(".ogg")
+            ? StreamType.OggOpus
+            : undefined;
+        const resource = createAudioResource(filePath, { inputType });
+        this.player.play(resource);
     }
 
 
@@ -197,14 +224,16 @@ export class GuildVoiceManager {
 
         const resource = createAudioResource(tempFile);
 
-        player.removeAllListeners();
+        // TTS interrupts any queued playback
+        this.queue = [];
+        this.currentMsg = msg;
         player.play(resource);
 
         player.once(AudioPlayerStatus.Idle, () => {
             fs.unlink(tempFile, () => { });
         });
 
-        player.on("error", (err) => {
+        player.once("error", (err) => {
             console.error("TTS error:", err);
             fs.unlink(tempFile, () => { });
             msg.reply(" TTS playback failed.");
@@ -265,25 +294,10 @@ export class GuildVoiceManager {
             return msg.reply("⚠️ Audio file not found.");
         }
 
-        const inputType = filePath.endsWith(".ogg")
-            ? StreamType.OggOpus
-            : undefined;
-
-        const resource: AudioResource<any> = createAudioResource(filePath, {
-            inputType,
-        });
-
-        player.removeAllListeners();
-        player.play(resource);
-
-        player.on(AudioPlayerStatus.Playing, () => {
-            // console.log(`Now playing: ${filePath}`);
-        });
-
-        player.on("error", (err) => {
-            console.error(err);
-            msg.reply("⚠️ Audio playback error.");
-        });
+        // Single-shot playback clears any existing queue
+        this.queue = [];
+        this.currentMsg = msg;
+        this.playResource(filePath);
     }
 
     async playRandom(msg: Message, folder: string) {
@@ -302,6 +316,15 @@ export class GuildVoiceManager {
         if (files.length === 0) {
             await msg.reply("⚠️ No audio files found in that folder.");
             return false;
+        }
+
+        if (search.toLowerCase() === "all") {
+            this.queue = [...files];
+            this.currentMsg = msg;
+            await this.ensureReady(msg);
+            const firstFile = this.queue.shift()!;
+            this.playResource(firstFile);
+            return true;
         }
 
         const searchLower = search.toLowerCase();
@@ -366,6 +389,7 @@ export class GuildVoiceManager {
 
     stop(msg: Message) {
         if (!this.player) return msg.reply("⛔ No audio to stop.");
+        this.queue = [];
         this.player.stop();
         msg.reply("🛑 Stopped.");
     }
