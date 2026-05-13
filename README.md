@@ -42,8 +42,6 @@ ASSETS_PRIVATE_DIR=/home/user/repo/dis-bot-assets-private
 PRIVATE_COMMANDS_DIR=/home/user/repo/dis-bot-assets-private/commands
 BF6_PLAYERS_CONFIG_PATH=/home/user/repo/dis-bot-assets-private/config/bf6players.json
 CRASH_COUNTER_FILE_PATH=/home/user/repo/dis-bot-assets-private/crashcounter.json
-GAME_ACCESS_CONFIG_PATH=/home/user/repo/dis-bot-assets-private/config/game-access.json
-PRIVATE_USERS_CONFIG_PATH=/home/user/repo/dis-bot-assets-private/config/users.json
 ```
 
 `DB_FILE_PATH` can be absolute or relative to this repo directory. `DB_FILE_NAME` is still
@@ -52,10 +50,6 @@ accepted for backward compatibility, but `DB_FILE_PATH` is preferred.
 defaults to `${ASSETS_PRIVATE_DIR}/config/bf6players.json`.
 `CRASH_COUNTER_FILE_PATH` is optional; if not set and `ASSETS_PRIVATE_DIR` is set, the bot
 defaults to `${ASSETS_PRIVATE_DIR}/crashcounter.json`.
-`GAME_ACCESS_CONFIG_PATH` is optional; if not set and `ASSETS_PRIVATE_DIR` is set, the bot
-defaults to `${ASSETS_PRIVATE_DIR}/config/game-access.json`.
-`PRIVATE_USERS_CONFIG_PATH` is optional; if not set and `ASSETS_PRIVATE_DIR` is set, the bot
-defaults to `${ASSETS_PRIVATE_DIR}/config/users.json`.
 
 4. Run the bot:
 
@@ -85,6 +79,9 @@ git clone git@github.com:<you>/dis-bot-assets-private.git /home/user/repo/dis-bo
   audio/
   images/
   config/
+    games.ts
+    users.ts
+    game-access.ts
     bf6players.json
 ```
 
@@ -103,38 +100,71 @@ This keeps your public GitHub repo clean while still letting private, server-spe
 
 ## Private Game Access
 
-Use the existing public/private split for account delivery as well:
+Game access configuration is defined in TypeScript inside the private repo.
+This provides compile-time safety, autocomplete, and a single source of truth for game identifiers.
 
-1. Keep the real user registry, buyer mapping, credentials, and guides in your private repo.
-2. Point the bot at that file with `GAME_ACCESS_CONFIG_PATH`, or let it default to
-   `${ASSETS_PRIVATE_DIR}/config/game-access.json`.
-3. Keep user purchase data in `PRIVATE_USERS_CONFIG_PATH`, or let it default to
-   `${ASSETS_PRIVATE_DIR}/config/users.json`.
-4. Use the public example file at `config/game-access.example.json` as the schema reference only.
+### Files
 
-Recommended private structure:
+| File | Purpose |
+|---|---|
+| `config/games.ts` | Single source of truth for game identifiers. Add every new game here first. |
+| `config/users.ts` | User registry, roles, and purchase assignments. Uses `Games.*` constants for purchases. |
+| `config/game-access.ts` | Credentials, guides, and aliases for each game. Keys are typed as `Record<GameKey, GameConfig>`. |
 
+### Adding a new game
+
+1. **Register the key** in `config/games.ts`:
+
+```ts
+export const Games = {
+    ForzaHorizon6: "forza-horizon-6",
+    Helldivers2: "helldivers-2",   // <-- add here
+} as const;
 ```
-/home/user/repo/dis-bot-assets-private/
-  config/
-    users.json
-    game-access.json
+
+2. **Add the game config** in `config/game-access.ts`:
+
+```ts
+export const gameAccess: Record<GameKey, GameConfig> = {
+    [Games.ForzaHorizon6]: { ... },
+    [Games.Helldivers2]: {            // <-- add here
+        title: "Helldivers 2",
+        aliases: ["hd2", "helldivers2"],
+        credentials: { ... },
+        guide: { ... },
+    },
+};
 ```
 
-Supported command format:
+3. **Assign to users** in `config/users.ts`:
+
+```ts
+purchases: [Games.ForzaHorizon6, Games.Helldivers2],
+```
+
+Because purchases are typed as `GameKey[]`, TypeScript will error if you mistype or use a string literal instead of `Games.*`.
+
+### Why TypeScript instead of JSON?
+
+- **No silent typos**: `purchases: [Games.Helldivers2]` is checked at compile time.
+- **Single source of truth**: The `Games` constant lives in one file and is imported everywhere.
+- **IDE autocomplete**: Your editor suggests valid game names when typing.
+- **Refactoring safety**: Rename a game in `games.ts` and TypeScript will flag every broken reference.
+
+### Supported command format
 
 ```
 account game:helldivers 2
 guide game:helldivers 2
 ```
 
-Security notes:
+### Security notes
 
 - `account` never posts credentials in a public channel.
-- Buyers are matched by Discord user ID from the private `users.json` purchase list.
-- Friendly user keys like `leog` can live in `users.json`, while `game-access.json` stays focused on credentials and guides.
+- Buyers are matched by Discord user ID from the private `users.ts` purchase list.
+- Friendly user keys like `leog` can live in `users.ts`, while `game-access.ts` stays focused on credentials and guides.
 - If a DM cannot be delivered, the bot only tells the user to enable DMs and retry.
-- The config file is reloaded automatically when admins update it on disk.
+- Restart the bot (`bun run dev`) after editing the TS configs — they are imported at startup.
 
 ## Private Commands
 
@@ -187,6 +217,7 @@ command files that require private IDs.
 - Public commands load first, private commands load after and override by name.
 - Audio/assets search order is private first, then public.
 - Private assets/commands live outside this repo and are configured via environment variables.
+- Game access and user data are defined in TypeScript in the private repo (`config/games.ts`, `config/users.ts`, `config/game-access.ts`) and imported directly — no JSON files needed.
 - SQLite can live outside this repo via `DB_FILE_PATH` (for example in `../dis-bot-assets-private/sqlite.db`).
 - Crash tracker file can live outside this repo via `CRASH_COUNTER_FILE_PATH`.
 
@@ -202,6 +233,8 @@ This uses `tsconfig.private.json` which includes:
 
 - Public repo TypeScript files
 - `../dis-bot-assets-private/commands/**/*.ts`
+- `../dis-bot-assets-private/config/**/*.ts`
+- `../dis-bot-assets-private/utils/**/*.ts`
 
 If your private repo lives elsewhere, update `tsconfig.private.json` accordingly.
 

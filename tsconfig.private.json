@@ -17,7 +17,9 @@
   },
   "include": [
     "**/*.ts",
-    "../dis-bot-assets-private/commands/**/*.ts"
+    "../dis-bot-assets-private/commands/**/*.ts",
+    "../dis-bot-assets-private/config/**/*.ts",
+    "../dis-bot-assets-private/utils/**/*.ts"
   ],
   "exclude": [
     "node_modules",

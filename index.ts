@@ -13,10 +13,7 @@ dotenv.config();
 
 const privateAssetsDir = process.env.ASSETS_PRIVATE_DIR;
 const privateCommandsDir = process.env.PRIVATE_COMMANDS_DIR;
-const gameAccessConfigPath = process.env.GAME_ACCESS_CONFIG_PATH
-    ?? (privateAssetsDir ? join(privateAssetsDir, "config", "game-access.json") : undefined);
-const privateUsersConfigPath = process.env.PRIVATE_USERS_CONFIG_PATH
-    ?? (privateAssetsDir ? join(privateAssetsDir, "config", "users.json") : undefined);
+
 if (privateAssetsDir) {
     if (!fs.existsSync(privateAssetsDir)) {
         console.warn(`[assets] ASSETS_PRIVATE_DIR not found: ${privateAssetsDir}`);
@@ -30,14 +27,6 @@ if (privateAssetsDir) {
 
 if (privateCommandsDir && !fs.existsSync(privateCommandsDir)) {
     console.warn(`[commands] PRIVATE_COMMANDS_DIR not found: ${privateCommandsDir}`);
-}
-
-if (gameAccessConfigPath && !fs.existsSync(gameAccessConfigPath)) {
-    console.warn(`[accounts] GAME_ACCESS_CONFIG_PATH not found: ${gameAccessConfigPath}`);
-}
-
-if (privateUsersConfigPath && !fs.existsSync(privateUsersConfigPath)) {
-    console.warn(`[accounts] PRIVATE_USERS_CONFIG_PATH not found: ${privateUsersConfigPath}`);
 }
 
 
