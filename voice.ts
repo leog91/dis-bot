@@ -297,6 +297,30 @@ export class GuildVoiceManager {
         await this.play(msg, randomFile);
     }
 
+    async playFromFolder(msg: Message, folder: string, search: string): Promise<boolean> {
+        const files = listAudioFiles(folder);
+        if (files.length === 0) {
+            await msg.reply("⚠️ No audio files found in that folder.");
+            return false;
+        }
+
+        const searchLower = search.toLowerCase();
+        const match = files.find((f) => {
+            const base = basename(f).toLowerCase();
+            return base.includes(searchLower);
+        });
+
+        if (!match) {
+            await msg.reply(
+                `⚠️ No audio file matching "${search}" found in folder "${folder}".`
+            );
+            return false;
+        }
+
+        await this.play(msg, match);
+        return true;
+    }
+
     async playRandomNoRepeat(msg: Message, folder: string): Promise<string | null> {
         const nextFile = this.nextFromQueue(folder);
         if (!nextFile) {
