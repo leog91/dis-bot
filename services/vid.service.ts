@@ -42,6 +42,7 @@ export type VidProgressMessage = {
 const DEFAULT_DISCORD_UPLOAD_LIMIT_BYTES = 10 * 1024 * 1024;
 const DISCORD_UPLOAD_HEADROOM_BYTES = 512 * 1024;
 const ffmpegBinary = ffmpegPath as unknown as string | null;
+const ytdlpBinary = path.resolve(process.cwd(), "yt-dlp");
 
 const formatMb = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
@@ -166,7 +167,7 @@ const compressVideoToFit = async (inputFile: string, uploadLimitBytes: number) =
 
 const runYtDlpGetUrl = async (url: string, attempt: YtDlpAttempt = {}) => {
     const cmd = [
-        "yt-dlp",
+        ytdlpBinary,
         "-g",
         "--no-warnings",
         "--extractor-retries", "3",
@@ -187,7 +188,7 @@ const runYtDlpGetUrl = async (url: string, attempt: YtDlpAttempt = {}) => {
 
 const runYtDlpDownload = async (url: string, outputTemplate: string) => {
     const cmd = [
-        "yt-dlp",
+        ytdlpBinary,
         "-f", "bv*+ba/b",
         "--merge-output-format", "mp4",
         "--no-warnings",
