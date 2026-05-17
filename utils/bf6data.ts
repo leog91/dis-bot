@@ -1,6 +1,6 @@
 import { db } from "../db/index";
 import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6WeaponPlaystyles, bf6ClassSnapshots } from "../db/schema";
-import { desc, eq, sql, and, lt, gt, inArray, lte } from "drizzle-orm";
+import { desc, eq, sql, and, lt, gt, lte } from "drizzle-orm";
 import { PlayerRank, updateBf6Data } from "./bf6rank";
 
 // ================= CONFIG =================
@@ -38,9 +38,13 @@ export type BF6ItemLeaderboardRow = {
  * Fetches the latest scrape data for all players
  */
 export const getLatestScrapes = async () => {
-    const latestDates = db.select({
-        maxDate: sql`MAX(${bf6Scrapes.scrapedAt})`
-    }).from(bf6Scrapes).groupBy(bf6Scrapes.playerId);
+    const latestPerPlayer = db.select({
+        playerId: bf6Scrapes.playerId,
+        maxDate: sql`MAX(${bf6Scrapes.scrapedAt})`.as('maxDate'),
+    })
+        .from(bf6Scrapes)
+        .groupBy(bf6Scrapes.playerId)
+        .as('latest');
 
     return await db.select({
         id: bf6Players.id,
@@ -58,8 +62,12 @@ export const getLatestScrapes = async () => {
     })
         .from(bf6Scrapes)
         .innerJoin(bf6Players, eq(bf6Scrapes.playerId, bf6Players.id))
-        .where(
-            inArray(bf6Scrapes.scrapedAt, latestDates)
+        .innerJoin(
+            latestPerPlayer,
+            and(
+                eq(bf6Scrapes.playerId, latestPerPlayer.playerId),
+                eq(bf6Scrapes.scrapedAt, latestPerPlayer.maxDate)
+            )
         );
 }
 
