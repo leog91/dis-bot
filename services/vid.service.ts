@@ -219,27 +219,19 @@ const findDownloadedFile = async (directory: string, prefix: string) => {
     return path.join(directory, matchingFiles[0]);
 };
 
-const shortenUrl = async (url: string) => {
-    const shortRes = await fetch(
-        `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`
-    );
-    return shortRes.text();
-};
-
 const getShorterUrlIfAvailable = async (url: string) => {
     try {
-        const shortenedUrl = (await shortenUrl(url)).trim();
+        const res = await fetch(
+            `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`
+        );
+        const shortenedUrl = (await res.text()).trim();
 
-        if (!shortenedUrl) {
+        if (!shortenedUrl || shortenedUrl.toLowerCase().startsWith("error")) {
             return url;
         }
 
-        try {
-            const parsedShortUrl = new URL(shortenedUrl);
-            if (parsedShortUrl.hostname !== "is.gd") {
-                return url;
-            }
-        } catch {
+        const parsed = new URL(shortenedUrl);
+        if (parsed.hostname !== "is.gd") {
             return url;
         }
 

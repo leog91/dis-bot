@@ -30,25 +30,23 @@ export default defineCommand({
         }
 
         try {
-            const response = await fetch(
+            const res = await fetch(
                 `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`
             );
+            const shortUrl = (await res.text()).trim();
 
-            const shortUrl = await response.text();
-
+            const isValid = shortUrl && !shortUrl.toLowerCase().startsWith("error");
+            const output = isValid && new URL(shortUrl).hostname === "is.gd" && shortUrl.length < url.length
+                ? shortUrl
+                : url;
 
             await msg.delete();
-
-
-            await msg.channel.send(
-                `by ${msg.author}:`
-            );
-            await msg.channel.send(shortUrl);
-
-
+            await msg.channel.send(`by ${msg.author}:`);
+            await msg.channel.send(output);
         } catch (err) {
             console.error(err);
-            await msg.reply("Failed to shorten the URL. Please try again later.");
+            await msg.channel.send(`by ${msg.author}:`);
+            await msg.channel.send(url);
         }
     }
 });
