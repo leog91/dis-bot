@@ -219,28 +219,44 @@ const findDownloadedFile = async (directory: string, prefix: string) => {
     return path.join(directory, matchingFiles[0]);
 };
 
-const getShorterUrlIfAvailable = async (url: string) => {
+const tryShortenWith = async (apiUrl: string, expectedHostname: string, url: string): Promise<string | null> => {
     try {
-        const res = await fetch(
-            `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`
-        );
-        const shortenedUrl = (await res.text()).trim();
+        const res = await fetch(apiUrl);
+        const text = (await res.text()).trim();
 
-        if (!shortenedUrl || shortenedUrl.toLowerCase().startsWith("error")) {
-            return url;
+        if (text && text.toLowerCase().startsWith("http")) {
+            const parsed = new URL(text);
+            if (parsed.hostname === expectedHostname && text.length < url.length) {
+                return text;
+            }
+        } else {
+            console.error(`${expectedHostname} shortening failed:`, text);
         }
-
-        const parsed = new URL(shortenedUrl);
-        if (parsed.hostname !== "is.gd") {
-            return url;
-        }
-
-        return shortenedUrl.length < url.length ? shortenedUrl : url;
     } catch (err) {
-        console.error("Failed to shorten URL:", err);
-        return url;
+        console.error(`Failed to shorten URL with ${expectedHostname}:`, err);
     }
+    return null;
 };
+
+const getShorterUrlIfAvailable = async (url: string) => {
+    const isGd = await tryShortenWith(
+        `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`,
+        "is.gd",
+        url
+    );
+    if (isGd) return isGd;
+
+    const ulvis = await tryShortenWith(
+        `https://ulvis.net/api.php?url=${encodeURIComponent(url)}`,
+        "ulvis.net",
+        url
+    );
+    if (ulvis) return ulvis;
+
+    return url;
+};
+
+
 
 const buildAttempts = ({ isTwitterLike, isRedditLike }: VidSourceInfo) => {
     const defaultAttempts: YtDlpAttempt[] = [
@@ -379,6 +395,76 @@ export const trySendRedditVideo = async (
         await progress?.update("Uploading video...");
         await channel.send(`by ${msg.author}:`);
         await channel.send({
+            files: [{
+                attachment: fileBuffer,
+                name: path.basename(fileToUpload),
+            }],
+        });
+        await progress?.remove();
+        await deleteOriginalMessage(msg);
+
+        return { sent: true };
+    } finally {
+        await fs.unlink(downloadedFile).catch(() => {});
+        if (fileToUpload !== downloadedFile) {
+            await fs.unlink(fileToUpload).catch(() => {});
+        }
+    }
+};
+
+export const trySendTwitterVideo = async (
+    msg: Message,
+    url: string,
+    progress?: VidProgressMessage
+): Promise<RedditVideoResult> => {
+    const tempDir = path.resolve(process.cwd(), "temp");
+    const filePrefix = `twitter-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const outputTemplate = path.join(tempDir, `${filePrefix}.%(ext)s`);
+    const uploadLimitBytes = getUploadLimitBytes(msg);
+
+    await progress?.update("Downloading Twitter video...");
+    await fs.mkdir(tempDir, { recursive: true });
+
+    const result = await runYtDlpDownload(url, outputTemplate);
+    const downloadedFile = await findDownloadedFile(tempDir, filePrefix);
+
+    if (result.exitCode !== 0 || !downloadedFile) {
+        if (downloadedFile) {
+            await fs.unlink(downloadedFile).catch(() => {});
+        }
+
+        console.error(result.stderrText || `yt-dlp exited with code ${result.exitCode}`);
+        return { sent: false };
+    }
+
+    let fileToUpload = downloadedFile;
+
+    try {
+        let fileStat = await fs.stat(downloadedFile);
+
+        if (fileStat.size > uploadLimitBytes) {
+            await progress?.update("Compressing video to fit Discord...");
+            const compressedFile = await compressVideoToFit(downloadedFile, uploadLimitBytes);
+            if (compressedFile) {
+                fileToUpload = compressedFile;
+                fileStat = await fs.stat(compressedFile);
+            }
+        }
+
+        if (fileStat.size > uploadLimitBytes) {
+            console.error(
+                `Twitter video is too large to upload: ${fileToUpload} (${formatMb(fileStat.size)})`
+            );
+            return { sent: false };
+        }
+
+        const fileBuffer = await fs.readFile(fileToUpload);
+        const channel = getSendChannel(msg);
+
+        await progress?.update("Uploading video...");
+        await channel.send(`by ${msg.author}:`);
+        await channel.send({
+            content: `[Tweet](<${url}>)`,
             files: [{
                 attachment: fileBuffer,
                 name: path.basename(fileToUpload),

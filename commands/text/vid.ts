@@ -6,6 +6,7 @@ import {
     resolveVidOutputUrl,
     sendVidResponse,
     trySendRedditVideo,
+    trySendTwitterVideo,
     type VidProgressMessage,
 } from "../../services/vid.service";
 import { useVoice } from "../../voice";
@@ -74,6 +75,19 @@ export default defineCommand({
                 const outputUrl = await resolveVidOutputUrl(url, sourceInfo);
                 await progress.update("Couldn't upload the video, sending the link instead...");
                 await sendVidResponse(msg, outputUrl, notice, progress);
+                return;
+            }
+
+            if (sourceInfo.isTwitterLike) {
+                progress = await createVidProgressMessage(msg, "Preparing Twitter video...");
+                const twitterResult = await trySendTwitterVideo(msg, url, progress);
+                if (twitterResult.sent) {
+                    return;
+                }
+
+                const outputUrl = await resolveVidOutputUrl(url, sourceInfo);
+                await progress.update("Couldn't upload the video, sending the link instead...");
+                await sendVidResponse(msg, `[Tweet](<${url}>)\n${outputUrl}`, undefined, progress);
                 return;
             }
 
