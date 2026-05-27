@@ -21,6 +21,14 @@ export default defineCommand({
             return;
         }
 
+        if (args[0].toLowerCase() === "langs") {
+            const list = Array.from(SUPPORTED_LANGS)
+                .sort()
+                .join(", ");
+            await msg.reply(`Supported languages: ${list}`);
+            return;
+        }
+
         let lang = "en";
         let textArgs = args;
 
