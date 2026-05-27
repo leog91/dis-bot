@@ -1,6 +1,39 @@
 import { Message, TextChannel } from "discord.js";
 import { defineCommand } from "..";
 
+const validateShortenedUrl = async (shortUrl: string): Promise<boolean> => {
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(shortUrl, {
+            method: "HEAD",
+            signal: controller.signal,
+            redirect: "follow",
+        });
+        clearTimeout(timeout);
+        return res.ok || (res.status >= 300 && res.status < 400);
+    } catch {
+        return false;
+    }
+};
+
+const tryShorten = async (apiUrl: string, expectedHostname: string, url: string): Promise<string | null> => {
+    try {
+        const res = await fetch(apiUrl);
+        const text = (await res.text()).trim();
+
+        if (text && text.toLowerCase().startsWith("http")) {
+            const parsed = new URL(text);
+            if (parsed.hostname === expectedHostname && text.length < url.length) {
+                const isValid = await validateShortenedUrl(text);
+                if (isValid) return text;
+            }
+        }
+    } catch (err) {
+        console.error(`Failed to shorten URL with ${expectedHostname}:`, err);
+    }
+    return null;
+};
 
 export default defineCommand({
     name: "shorten",
@@ -21,7 +54,6 @@ export default defineCommand({
             return;
         }
 
-        // Basic URL validation
         try {
             new URL(url);
         } catch {
@@ -30,15 +62,16 @@ export default defineCommand({
         }
 
         try {
-            const res = await fetch(
-                `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`
+            const isGd = await tryShorten(
+                `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`,
+                "is.gd",
+                url
             );
-            const shortUrl = (await res.text()).trim();
-
-            const isValid = shortUrl && !shortUrl.toLowerCase().startsWith("error");
-            const output = isValid && new URL(shortUrl).hostname === "is.gd" && shortUrl.length < url.length
-                ? shortUrl
-                : url;
+            const output = isGd ?? await tryShorten(
+                `https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`,
+                "tinyurl.com",
+                url
+            ) ?? url;
 
             await msg.delete();
             await msg.channel.send(`by ${msg.author}:`);

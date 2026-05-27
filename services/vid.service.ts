@@ -219,6 +219,22 @@ const findDownloadedFile = async (directory: string, prefix: string) => {
     return path.join(directory, matchingFiles[0]);
 };
 
+const validateShortenedUrl = async (shortUrl: string): Promise<boolean> => {
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(shortUrl, {
+            method: "HEAD",
+            signal: controller.signal,
+            redirect: "follow",
+        });
+        clearTimeout(timeout);
+        return res.ok || (res.status >= 300 && res.status < 400);
+    } catch {
+        return false;
+    }
+};
+
 const tryShortenWith = async (apiUrl: string, expectedHostname: string, url: string): Promise<string | null> => {
     try {
         const res = await fetch(apiUrl);
@@ -227,7 +243,9 @@ const tryShortenWith = async (apiUrl: string, expectedHostname: string, url: str
         if (text && text.toLowerCase().startsWith("http")) {
             const parsed = new URL(text);
             if (parsed.hostname === expectedHostname && text.length < url.length) {
-                return text;
+                const isValid = await validateShortenedUrl(text);
+                if (isValid) return text;
+                console.error(`${expectedHostname} returned invalid short URL:`, text);
             }
         } else {
             console.error(`${expectedHostname} shortening failed:`, text);
@@ -246,12 +264,12 @@ const getShorterUrlIfAvailable = async (url: string) => {
     );
     if (isGd) return isGd;
 
-    const ulvis = await tryShortenWith(
-        `https://ulvis.net/api.php?url=${encodeURIComponent(url)}`,
-        "ulvis.net",
+    const tinyUrl = await tryShortenWith(
+        `https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`,
+        "tinyurl.com",
         url
     );
-    if (ulvis) return ulvis;
+    if (tinyUrl) return tinyUrl;
 
     return url;
 };
