@@ -210,17 +210,43 @@ export class GuildVoiceManager {
             return;
         }
 
-        const url = googleTTS.getAudioUrl(text, {
-            lang,
-            slow: false,
-            host: "https://translate.google.com",
-        });
-
         const tempFile = join(__dirname, `./tts-${randomUUID()}.mp3`);
 
-        const res = await fetch(url);
-        const buffer = Buffer.from(await res.arrayBuffer());
-        fs.writeFileSync(tempFile, buffer);
+        try {
+            let urls: string[];
+            if (text.length > 200) {
+                const results = googleTTS.getAllAudioUrls(text, {
+                    lang,
+                    slow: false,
+                    host: "https://translate.google.com",
+                });
+                urls = results.map((r) => r.url);
+            } else {
+                urls = [
+                    googleTTS.getAudioUrl(text, {
+                        lang,
+                        slow: false,
+                        host: "https://translate.google.com",
+                    }),
+                ];
+            }
+
+            let fullBuffer = Buffer.alloc(0);
+            for (const url of urls) {
+                const res = await fetch(url);
+                if (!res.ok) {
+                    throw new Error(`Failed to fetch TTS audio: ${res.status}`);
+                }
+                const buffer = Buffer.from(await res.arrayBuffer());
+                fullBuffer = Buffer.concat([fullBuffer, buffer]);
+            }
+            fs.writeFileSync(tempFile, fullBuffer);
+        } catch (err: any) {
+            console.error("TTS generation error:", err);
+            await msg.reply("⚠️ Failed to generate TTS audio.");
+            fs.unlink(tempFile, () => {});
+            return;
+        }
 
         const resource = createAudioResource(tempFile);
 
