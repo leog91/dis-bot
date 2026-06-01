@@ -42,6 +42,8 @@ ASSETS_PRIVATE_DIR=/home/user/repo/dis-bot-assets-private
 PRIVATE_COMMANDS_DIR=/home/user/repo/dis-bot-assets-private/commands
 BF6_PLAYERS_CONFIG_PATH=/home/user/repo/dis-bot-assets-private/config/bf6players.json
 CRASH_COUNTER_FILE_PATH=/home/user/repo/dis-bot-assets-private/crashcounter.json
+SERVER_SETTINGS_PATH=/home/user/repo/dis-bot-assets-private/config/server-settings.json
+USERS_PENDING_PATH=/home/user/repo/dis-bot-assets-private/config/users-pending.json
 ```
 
 `DB_FILE_PATH` can be absolute or relative to this repo directory. `DB_FILE_NAME` is still
@@ -50,6 +52,8 @@ accepted for backward compatibility, but `DB_FILE_PATH` is preferred.
 defaults to `${ASSETS_PRIVATE_DIR}/config/bf6players.json`.
 `CRASH_COUNTER_FILE_PATH` is optional; if not set and `ASSETS_PRIVATE_DIR` is set, the bot
 defaults to `${ASSETS_PRIVATE_DIR}/crashcounter.json`.
+`SERVER_SETTINGS_PATH` and `USERS_PENDING_PATH` default to the private repo `config/` folder
+when `ASSETS_PRIVATE_DIR` is set.
 
 4. Run the bot:
 
@@ -108,7 +112,7 @@ This provides compile-time safety, autocomplete, and a single source of truth fo
 | File | Purpose |
 |---|---|
 | `config/games.ts` | Single source of truth for game identifiers. Add every new game here first. |
-| `config/users.ts` | User registry, roles, and purchase assignments. Uses `Games.*` constants for purchases. |
+| `config/users.ts` | User registry, roles, purchases, and optional voice greeting settings (nicknames, ttsLang, greetingText, ttsGreetingEnabled). |
 | `config/game-access.ts` | Credentials, guides, and aliases for each game. Keys are typed as `Record<GameKey, GameConfig>`. |
 
 ### Adding a new game
@@ -162,9 +166,79 @@ guide game:helldivers 2
 
 - `account` never posts credentials in a public channel.
 - Buyers are matched by Discord user ID from the private `users.ts` purchase list.
-- Friendly user keys like `leog` can live in `users.ts`, while `game-access.ts` stays focused on credentials and guides.
+- Friendly user keys like `timmy` can live in `users.ts`, while `game-access.ts` stays focused on credentials and guides.
 - If a DM cannot be delivered, the bot only tells the user to enable DMs and retry.
 - Restart the bot (`bun run dev`) after editing the TS configs — they are imported at startup.
+
+## Voice Greetings
+
+The bot can greet users with TTS when they join a voice channel the bot is already in.
+
+### How it works
+
+1. A user joins a voice channel where the bot is present.
+2. The bot checks `config/server-settings.json` to see if `greeting` is enabled for that server.
+3. The bot looks up the user in `config/users.ts`.
+   - If the user is found and `ttsGreetingEnabled: true`, the bot speaks a greeting using a random nickname.
+   - If the user is **not** found, they are added to `config/users-pending.json` so you can register them later.
+
+### Enabling for a server
+
+Edit or create `config/server-settings.json`:
+
+```json
+{
+  "YOUR_GUILD_ID": {
+    "greeting": true,
+    "name": "My Cool Server"
+  }
+}
+```
+
+The `name` field is optional; the bot auto-updates it on the next greeting event.
+
+### Configuring a user
+
+In `config/users.ts`, add the optional greeting fields:
+
+```ts
+timmy: {
+    discordId: "discord-id",
+    displayName: "timm",
+    nicknames: ["timmy", "tim", ],
+    ttsGreetingEnabled: true,
+    ttsLang: "en",
+    greetingText: "welcome back {nickname}",
+    purchases: [Games.funnyGame],
+    roles: ["admin", "tester"],
+    notes: [],
+},
+```
+
+| Field | Default | Description |
+|---|---|---|
+| `nicknames` | — | List of names. One is picked at random for the greeting. Falls back to `displayName` if empty. |
+| `ttsGreetingEnabled` | `false` | **Must be `true`** for the bot to greet this user. Opt-in by design. |
+| `ttsLang` | `"es"` | Language code for Google TTS (`en`, `es`, `fr`, etc.). |
+| `greetingText` | `"Hola {nickname}"` | Greeting template. Use `{nickname}` as a placeholder. If the template omits `{nickname}`, the nickname is appended automatically. |
+
+### Unknown user tracking
+
+When an unregistered user joins a voice channel, the bot creates an entry in `config/users-pending.json`:
+
+```json
+{
+  "server-id": {
+    "displayName": "someUser",
+    "seenAt": "2026-06-01T18:00:00.000Z",
+    "lastSeenAt": "2026-06-01T20:15:30.000Z",
+    "joinCount": 5,
+    "lastSeenServer": "My Cool Server"
+  }
+}
+```
+
+This lets you see how active an unknown user is before deciding to add them to `users.ts`.
 
 ## Private Commands
 

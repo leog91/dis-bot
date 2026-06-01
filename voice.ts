@@ -151,18 +151,13 @@ export class GuildVoiceManager {
     }
 
 
-    // Ensure connection + player exist
-    async ensureReady(msg: Message): Promise<AudioPlayer> {
-        const channel = msg.member?.voice.channel;
-        if (!channel) {
-            throw new Error("User is not in a voice channel.");
-        }
-
+    // Ensure connection + player exist for a specific channel
+    async ensureConnection(channelId: string, adapterCreator: any): Promise<AudioPlayer> {
         if (!this.connection) {
             this.connection = joinVoiceChannel({
-                channelId: channel.id,
+                channelId,
                 guildId: this.guildId,
-                adapterCreator: msg.guild!.voiceAdapterCreator as any,
+                adapterCreator,
             });
         }
 
@@ -190,6 +185,14 @@ export class GuildVoiceManager {
         return this.player;
     }
 
+    async ensureReady(msg: Message): Promise<AudioPlayer> {
+        const channel = msg.member?.voice.channel;
+        if (!channel) {
+            throw new Error("User is not in a voice channel.");
+        }
+        return this.ensureConnection(channel.id, msg.guild!.voiceAdapterCreator as any);
+    }
+
     private playResource(filePath: string) {
         if (!this.player) return;
         const inputType = filePath.endsWith(".ogg")
@@ -200,16 +203,7 @@ export class GuildVoiceManager {
     }
 
 
-    async playTTS(msg: Message, text: string, lang = "en") {
-        let player;
-
-        try {
-            player = await this.ensureReady(msg);
-        } catch (err: any) {
-            await msg.reply("⚠️ " + err.message);
-            return;
-        }
-
+    private async generateTTSFile(text: string, lang: string): Promise<string | null> {
         const tempFile = join(__dirname, `./tts-${randomUUID()}.mp3`);
 
         try {
@@ -241,10 +235,27 @@ export class GuildVoiceManager {
                 fullBuffer = Buffer.concat([fullBuffer, buffer]);
             }
             fs.writeFileSync(tempFile, fullBuffer);
+            return tempFile;
         } catch (err: any) {
             console.error("TTS generation error:", err);
-            await msg.reply("⚠️ Failed to generate TTS audio.");
             fs.unlink(tempFile, () => {});
+            return null;
+        }
+    }
+
+    async playTTS(msg: Message, text: string, lang = "en") {
+        let player;
+
+        try {
+            player = await this.ensureReady(msg);
+        } catch (err: any) {
+            await msg.reply("⚠️ " + err.message);
+            return;
+        }
+
+        const tempFile = await this.generateTTSFile(text, lang);
+        if (!tempFile) {
+            await msg.reply("⚠️ Failed to generate TTS audio.");
             return;
         }
 
@@ -263,6 +274,38 @@ export class GuildVoiceManager {
             console.error("TTS error:", err);
             fs.unlink(tempFile, () => { });
             msg.reply(" TTS playback failed.");
+        });
+    }
+
+    async playTTSInChannel(channelId: string, adapterCreator: any, text: string, lang = "en") {
+        let player;
+
+        try {
+            player = await this.ensureConnection(channelId, adapterCreator);
+        } catch (err: any) {
+            console.error("TTS connection error:", err.message);
+            return;
+        }
+
+        const tempFile = await this.generateTTSFile(text, lang);
+        if (!tempFile) {
+            console.error("Failed to generate TTS audio.");
+            return;
+        }
+
+        const resource = createAudioResource(tempFile);
+
+        this.queue = [];
+        this.currentMsg = null;
+        player.play(resource);
+
+        player.once(AudioPlayerStatus.Idle, () => {
+            fs.unlink(tempFile, () => { });
+        });
+
+        player.once("error", (err) => {
+            console.error("TTS error:", err);
+            fs.unlink(tempFile, () => { });
         });
     }
 
