@@ -64,6 +64,7 @@ const SUBCOMMAND_ALIASES: Partial<Record<SubCommand, string[]>> = {
     engineer: ["eng"],
     support: ["sup"],
     recon: ["rec"],
+    planes: ["plane", "aircraft", "jet"],
 };
 
 function resolveSubcommand(raw: string | undefined): SubCommand | null {
