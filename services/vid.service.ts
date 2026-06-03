@@ -43,6 +43,8 @@ const DEFAULT_DISCORD_UPLOAD_LIMIT_BYTES = 10 * 1024 * 1024;
 const DISCORD_UPLOAD_HEADROOM_BYTES = 512 * 1024;
 const ffmpegBinary = ffmpegPath as unknown as string | null;
 const ytdlpBinary = path.resolve(process.cwd(), "yt-dlp");
+const cookiesFile = path.resolve(process.cwd(), "cookies.txt");
+const browserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 const formatMb = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
@@ -165,6 +167,19 @@ const compressVideoToFit = async (inputFile: string, uploadLimitBytes: number) =
     return "";
 };
 
+const addCommonYtDlpArgs = async (cmd: string[]) => {
+    cmd.push("--user-agent", browserUserAgent);
+    try {
+        await fs.access(cookiesFile);
+        cmd.push("--cookies", cookiesFile);
+    } catch {
+        const browserName = process.env.YTDLP_COOKIES_FROM_BROWSER;
+        if (browserName) {
+            cmd.push("--cookies-from-browser", browserName);
+        }
+    }
+};
+
 const runYtDlpGetUrl = async (url: string, attempt: YtDlpAttempt = {}) => {
     const cmd = [
         ytdlpBinary,
@@ -172,6 +187,8 @@ const runYtDlpGetUrl = async (url: string, attempt: YtDlpAttempt = {}) => {
         "--no-warnings",
         "--extractor-retries", "3",
     ];
+
+    await addCommonYtDlpArgs(cmd);
 
     if (attempt.format) {
         cmd.push("-f", attempt.format);
@@ -195,6 +212,8 @@ const runYtDlpDownload = async (url: string, outputTemplate: string) => {
         "--extractor-retries", "3",
         "-o", outputTemplate,
     ];
+
+    await addCommonYtDlpArgs(cmd);
 
     if (ffmpegBinary) {
         cmd.push("--ffmpeg-location", ffmpegBinary);
@@ -226,10 +245,10 @@ const validateShortenedUrl = async (shortUrl: string): Promise<boolean> => {
         const res = await fetch(shortUrl, {
             method: "HEAD",
             signal: controller.signal,
-            redirect: "follow",
+            redirect: "manual",
         });
         clearTimeout(timeout);
-        return res.ok || (res.status >= 300 && res.status < 400);
+        return res.status < 500;
     } catch {
         return false;
     }
