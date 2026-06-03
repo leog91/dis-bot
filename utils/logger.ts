@@ -21,10 +21,17 @@ export function logger(server: string, message: string, type: LogType = "INFO") 
         case "INFO": colorLine = chalk.white(line); break;
         case "VOICE": colorLine = message.includes("joined") ? chalk.green(line)
             : message.includes("left") ? chalk.red(line)
-                : chalk.yellow(line);
+                : message.includes("undeafened") ? chalk.gray(line)
+                    : message.includes("deafened") ? chalk.cyan(line)
+                        : message.includes("unmuted") ? chalk.blue(line)
+                            : message.includes("muted") ? chalk.magenta(line)
+                                : message.includes("switched") ? chalk.yellow(line)
+                                    : chalk.yellow(line);
             break;
         case "MESSAGE": colorLine = chalk.cyan(line); break;
         case "ERROR": colorLine = chalk.redBright(line); break;
+        case "BUTTON": colorLine = chalk.magenta(line); break;
+        case "SELECT": colorLine = chalk.blue(line); break;
     }
 
     console.log(colorLine.trim());
