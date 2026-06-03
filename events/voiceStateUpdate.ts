@@ -4,6 +4,15 @@ import { useVoice } from "../voice";
 import { getUserProfileByDiscordId, getRandomNickname } from "../../dis-bot-assets-private/config/users";
 import { isGreetingEnabled, addUnknownUser, setServerName } from "../services/greeting.service";
 
+function trackUnknownUser(state: VoiceState) {
+    if (state.member?.user.bot) return;
+    const userProfile = getUserProfileByDiscordId(state.id);
+    if (!userProfile) {
+        const displayName = state.member?.displayName || state.member?.user.username || "Unknown";
+        addUnknownUser(state.id, displayName, state.guild.name);
+    }
+}
+
 async function maybeGreet(state: VoiceState) {
     const guild = state.guild;
     if (state.member?.user.bot) return;
@@ -36,9 +45,6 @@ async function maybeGreet(state: VoiceState) {
             greetingText,
             lang,
         );
-    } else if (!userProfile) {
-        const displayName = state.member?.displayName || state.member?.user.username || "Unknown";
-        addUnknownUser(state.id, displayName, guild.name);
     }
 }
 
@@ -50,11 +56,13 @@ export default async function onVoiceStateUpdate(oldState: VoiceState, newState:
     // Joined or left voice channel
     if (!oldState.channel && newState.channel) {
         logger(server, `${memberName} joined voice channel ${newState.channel.name}`, "VOICE");
+        trackUnknownUser(newState);
         await maybeGreet(newState);
     } else if (oldState.channel && !newState.channel) {
         logger(server, `${memberName} left voice channel ${oldState.channel.name}`, "VOICE");
     } else if (oldState.channel && newState.channel && oldState.channel.id !== newState.channel.id) {
         logger(server, `${memberName} switched from ${oldState.channel.name} to ${newState.channel.name}`, "VOICE");
+        trackUnknownUser(newState);
         await maybeGreet(newState);
     }
 
