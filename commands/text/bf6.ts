@@ -12,6 +12,11 @@ import {
     getPlayerClassStats,
     getClassLeaderboard,
     BF6ClassKey,
+    getMonthlyHistory,
+    getPlayerMonthlyHistory,
+    getMonthLeaderboard,
+    resolveMonth,
+    PlayerMonthRow,
 } from "../../utils/bf6data";
 
 // ================= CONFIG =================
@@ -46,6 +51,7 @@ const SUBCOMMANDS = [
     "engineer",
     "support",
     "recon",
+    "history",
 ] as const;
 
 type SubCommand = typeof SUBCOMMANDS[number];
@@ -65,6 +71,8 @@ const SUBCOMMAND_ALIASES: Partial<Record<SubCommand, string[]>> = {
     support: ["sup"],
     recon: ["rec"],
     planes: ["plane", "aircraft", "jet"],
+    history: ["monthly", "month"],
+    bans: ["ban", "banned"],
 };
 
 function resolveSubcommand(raw: string | undefined): SubCommand | null {
@@ -234,6 +242,124 @@ export default defineCommand({
                     tableRows.join("\n") +
                     "\n```" +
                     trimmedNote
+                );
+                return;
+            }
+
+            if (sub === "history") {
+                const arg1 = args[1];
+                const arg2 = args[2];
+
+                if (!arg1) {
+                    const months = await getMonthlyHistory();
+                    if (!months.length) {
+                        await msg.reply("No monthly history data available yet.");
+                        return;
+                    }
+
+                    const rows = months.map((m) => {
+                        const kd = (m.kdRatio / 100).toFixed(2);
+                        return `${m.month} | ${m.timePlayedDisplay.padEnd(9)} | ${String(m.kills).padStart(7)} | ${String(m.deaths).padStart(7)} | ${kd.padStart(5)}`;
+                    });
+
+                    await msg.reply(
+                        ` **BF6 Monthly History**\n` +
+                        "```text\n" +
+                        "month   | time      |  kills  | deaths |   k/d\n" +
+                        rows.join("\n") +
+                        "\n```"
+                    );
+                    return;
+                }
+
+                const resolvedMonth = resolveMonth(arg1);
+
+                if (resolvedMonth) {
+                    const sortArg = (arg2 ?? "kills").toLowerCase();
+                    let sortBy: "kills" | "deaths" | "timePlayed" | "kd" = "kills";
+                    if (sortArg === "deaths") sortBy = "deaths";
+                    else if (sortArg === "time" || sortArg === "timeplayed" || sortArg === "playtime") sortBy = "timePlayed";
+                    else if (sortArg === "kd" || sortArg === "k/d") sortBy = "kd";
+
+                    const rows = await getMonthLeaderboard(resolvedMonth, sortBy);
+
+                    const [y, m] = resolvedMonth.split("-");
+                    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    const monthName = monthNames[parseInt(m) - 1];
+                    const sortLabel = sortBy === "timePlayed" ? "time" : sortBy;
+
+                    if (!rows.length) {
+                        await msg.reply(`No player data found for ${monthName} ${y}.`);
+                        return;
+                    }
+
+                    const visibleRows = rows.slice(0, 20);
+                    const playerColWidth = Math.max(
+                        "player".length,
+                        ...visibleRows.map((r) => r.platformUserHandle.length)
+                    );
+                    const fmtPlayer = (name: string) => name.padEnd(playerColWidth, " ");
+
+                    const fmtVal = (n: number, status: string) => {
+                        if (status === "not_tracked") return "-".padStart(7, " ");
+                        if (status === "new") return ("~" + n).padStart(7, " ");
+                        return String(n).padStart(7, " ");
+                    };
+
+                    const fmtTime = (display: string) => display.padEnd(9, " ");
+
+                    const fmtKd = (ratio: number, status: string) => {
+                        if (status === "not_tracked") return "    -";
+                        return (ratio / 100).toFixed(2).padStart(5, " ");
+                    };
+
+                    const tableRows = visibleRows.map((row, idx) =>
+                        `${String(idx + 1).padStart(2, " ")} | ${fmtPlayer(row.platformUserHandle)} | ${fmtTime(row.timePlayedDisplay)} | ${fmtVal(row.kills, row.status)} | ${fmtVal(row.deaths, row.status)} | ${fmtKd(row.kdRatio, row.status)}`
+                    );
+
+                    const trimmedNote = rows.length > 20
+                        ? `\n...showing top 20/${rows.length} players`
+                        : "";
+
+                    const notTrackedCount = rows.filter((r) => r.status === "not_tracked").length;
+                    const notTrackedNote = notTrackedCount > 0
+                        ? `\n*${notTrackedCount} player(s) not tracked in this period*`
+                        : "";
+
+                    await msg.reply(
+                        ` **BF6 History - ${monthName} ${y}** (sorted by ${sortLabel})\n` +
+                        "```text\n" +
+                        ` # | ${"player".padEnd(playerColWidth, " ")} | time      |  kills  | deaths |   k/d\n` +
+                        tableRows.join("\n") +
+                        "\n```" +
+                        trimmedNote +
+                        notTrackedNote
+                    );
+                    return;
+                }
+
+                const playerHistory = await getPlayerMonthlyHistory(arg1);
+                if (!playerHistory) {
+                    await msg.reply(`No BF6 player found for "${arg1}".`);
+                    return;
+                }
+
+                if (!playerHistory.months.length) {
+                    await msg.reply(`No monthly history found for ${playerHistory.player.platformUserHandle}.`);
+                    return;
+                }
+
+                const rows = playerHistory.months.map((m) => {
+                    const kd = (m.kdRatio / 100).toFixed(2);
+                    return `${m.month} | ${m.timePlayedDisplay.padEnd(9)} | ${String(m.kills).padStart(7)} | ${String(m.deaths).padStart(7)} | ${kd.padStart(5)}`;
+                });
+
+                await msg.reply(
+                    ` **${playerHistory.player.platformUserHandle} - Monthly History**\n` +
+                    "```text\n" +
+                    "month   | time      |  kills  | deaths |   k/d\n" +
+                    rows.join("\n") +
+                    "\n```"
                 );
                 return;
             }

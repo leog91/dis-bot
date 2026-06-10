@@ -1,6 +1,6 @@
 import { db } from "../db/index";
 import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6WeaponPlaystyles, bf6ClassSnapshots } from "../db/schema";
-import { desc, eq, sql, and, lt, gt, lte } from "drizzle-orm";
+import { desc, eq, sql, and, lt, gt, lte, gte } from "drizzle-orm";
 import { PlayerRank, updateBf6Data } from "./bf6rank";
 
 // ================= CONFIG =================
@@ -493,4 +493,343 @@ export async function getPlayerClassStats(userInput: string) {
         platformUserHandle: matched.platformUserHandle,
         classes,
     };
+}
+
+export type MonthlyRow = {
+    month: string;
+    kills: number;
+    deaths: number;
+    timePlayedValue: number;
+    timePlayedDisplay: string;
+    kdRatio: number;
+};
+
+export type PlayerMonthRow = {
+    playerId: string;
+    user: string;
+    platformUserHandle: string;
+    kills: number;
+    deaths: number;
+    timePlayedValue: number;
+    timePlayedDisplay: string;
+    kdRatio: number;
+    status: "ok" | "new" | "zero" | "not_tracked";
+};
+
+const MONTH_NAMES: Record<string, number> = {
+    jan: 1, january: 1,
+    feb: 2, february: 2,
+    mar: 3, march: 3,
+    apr: 4, april: 4,
+    may: 5,
+    jun: 6, june: 6,
+    jul: 7, july: 7,
+    aug: 8, august: 8,
+    sep: 9, september: 9,
+    oct: 10, october: 10,
+    nov: 11, november: 11,
+    dec: 12, december: 12,
+};
+
+export function resolveMonth(input: string): string | null {
+    const normalized = input.trim().toLowerCase();
+
+    const ymMatch = normalized.match(/^(\d{4})-(\d{2})$/);
+    if (ymMatch) {
+        const month = parseInt(ymMatch[2]);
+        if (month >= 1 && month <= 12) return normalized;
+        return null;
+    }
+
+    const monthNum = MONTH_NAMES[normalized];
+    if (!monthNum) return null;
+
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const year = monthNum > currentMonth ? now.getFullYear() - 1 : now.getFullYear();
+    return `${year}-${String(monthNum).padStart(2, "0")}`;
+}
+
+function formatHistoryTime(seconds: number): string {
+    if (seconds <= 0) return "0s";
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+}
+
+export async function getMonthlyHistory(): Promise<MonthlyRow[]> {
+    const allScrapes = await db.select({
+        playerId: bf6Scrapes.playerId,
+        kills: bf6Scrapes.kills,
+        deaths: bf6Scrapes.deaths,
+        timePlayedValue: bf6Scrapes.timePlayedValue,
+        scrapedAt: bf6Scrapes.scrapedAt,
+    })
+        .from(bf6Scrapes)
+        .orderBy(bf6Scrapes.scrapedAt);
+
+    if (!allScrapes.length) return [];
+
+    const byPlayerMonth = new Map<string, Map<string, { kills: number; deaths: number; timePlayedValue: number }>>();
+
+    for (const s of allScrapes) {
+        const month = `${s.scrapedAt.getFullYear()}-${String(s.scrapedAt.getMonth() + 1).padStart(2, "0")}`;
+        if (!byPlayerMonth.has(s.playerId)) byPlayerMonth.set(s.playerId, new Map());
+        byPlayerMonth.get(s.playerId)!.set(month, { kills: s.kills, deaths: s.deaths, timePlayedValue: s.timePlayedValue });
+    }
+
+    const allMonths = new Set<string>();
+    for (const months of byPlayerMonth.values()) {
+        for (const m of months.keys()) allMonths.add(m);
+    }
+    const sortedMonths = [...allMonths].sort();
+
+    const result: MonthlyRow[] = [];
+
+    for (let i = 0; i < sortedMonths.length; i++) {
+        const month = sortedMonths[i];
+        const prevMonth = i > 0 ? sortedMonths[i - 1] : null;
+
+        let totalKills = 0;
+        let totalDeaths = 0;
+        let totalTime = 0;
+
+        for (const playerMonths of byPlayerMonth.values()) {
+            const curr = playerMonths.get(month);
+            if (!curr) continue;
+
+            if (prevMonth) {
+                const prev = playerMonths.get(prevMonth);
+                if (prev) {
+                    totalKills += curr.kills - prev.kills;
+                    totalDeaths += curr.deaths - prev.deaths;
+                    totalTime += curr.timePlayedValue - prev.timePlayedValue;
+                }
+            }
+        }
+
+        const kd = totalDeaths > 0 ? Math.round((totalKills / totalDeaths) * 100) : totalKills * 100;
+
+        result.push({
+            month,
+            kills: totalKills,
+            deaths: totalDeaths,
+            timePlayedValue: totalTime,
+            timePlayedDisplay: formatHistoryTime(totalTime),
+            kdRatio: kd,
+        });
+    }
+
+    return result;
+}
+
+export async function getPlayerMonthlyHistory(userInput: string): Promise<{
+    player: { id: string; user: string; platformUserHandle: string };
+    months: MonthlyRow[];
+} | null> {
+    const normalized = userInput.trim().toLowerCase();
+    if (!normalized) return null;
+
+    const players = await db.select({
+        id: bf6Players.id,
+        user: bf6Players.user,
+        platformUserHandle: bf6Players.platformUserHandle,
+    }).from(bf6Players);
+
+    const exact = players.find((p) =>
+        p.id.toLowerCase() === normalized ||
+        p.user.toLowerCase() === normalized ||
+        p.platformUserHandle.toLowerCase() === normalized
+    );
+    const contains = players.find((p) =>
+        p.user.toLowerCase().includes(normalized) ||
+        p.platformUserHandle.toLowerCase().includes(normalized)
+    );
+
+    const matched = exact ?? contains;
+    if (!matched) return null;
+
+    const playerScrapes = await db.select({
+        kills: bf6Scrapes.kills,
+        deaths: bf6Scrapes.deaths,
+        timePlayedValue: bf6Scrapes.timePlayedValue,
+        scrapedAt: bf6Scrapes.scrapedAt,
+    })
+        .from(bf6Scrapes)
+        .where(eq(bf6Scrapes.playerId, matched.id))
+        .orderBy(bf6Scrapes.scrapedAt);
+
+    if (!playerScrapes.length) return null;
+
+    const byMonth = new Map<string, { kills: number; deaths: number; timePlayedValue: number }>();
+    for (const s of playerScrapes) {
+        const month = `${s.scrapedAt.getFullYear()}-${String(s.scrapedAt.getMonth() + 1).padStart(2, "0")}`;
+        byMonth.set(month, { kills: s.kills, deaths: s.deaths, timePlayedValue: s.timePlayedValue });
+    }
+
+    const sortedMonths = [...byMonth.keys()].sort();
+    const months: MonthlyRow[] = [];
+
+    for (let i = 0; i < sortedMonths.length; i++) {
+        const month = sortedMonths[i];
+        const curr = byMonth.get(month)!;
+        const prevMonth = i > 0 ? sortedMonths[i - 1] : null;
+        const prev = prevMonth ? byMonth.get(prevMonth) : null;
+
+        let kills: number;
+        let deaths: number;
+        let time: number;
+
+        if (prev) {
+            kills = curr.kills - prev.kills;
+            deaths = curr.deaths - prev.deaths;
+            time = curr.timePlayedValue - prev.timePlayedValue;
+        } else {
+            kills = curr.kills;
+            deaths = curr.deaths;
+            time = curr.timePlayedValue;
+        }
+
+        const kd = deaths > 0 ? Math.round((kills / deaths) * 100) : kills * 100;
+
+        months.push({
+            month,
+            kills,
+            deaths,
+            timePlayedValue: time,
+            timePlayedDisplay: formatHistoryTime(time),
+            kdRatio: kd,
+        });
+    }
+
+    return {
+        player: { id: matched.id, user: matched.user, platformUserHandle: matched.platformUserHandle },
+        months,
+    };
+}
+
+export async function getMonthLeaderboard(
+    monthStr: string,
+    sortBy: "kills" | "deaths" | "timePlayed" | "kd" = "kills"
+): Promise<PlayerMonthRow[]> {
+    const [yearStr, monthNumStr] = monthStr.split("-");
+    const targetYear = parseInt(yearStr);
+    const targetMonth = parseInt(monthNumStr);
+
+    const monthStart = new Date(targetYear, targetMonth - 1, 1);
+    const monthEnd = new Date(targetYear, targetMonth, 1);
+    const prevMonthEnd = new Date(targetYear, targetMonth - 1, 1);
+
+    const allPlayers = await db.select({
+        id: bf6Players.id,
+        user: bf6Players.user,
+        platformUserHandle: bf6Players.platformUserHandle,
+    }).from(bf6Players);
+
+    const allScrapes = await db.select({
+        playerId: bf6Scrapes.playerId,
+        kills: bf6Scrapes.kills,
+        deaths: bf6Scrapes.deaths,
+        timePlayedValue: bf6Scrapes.timePlayedValue,
+        timePlayedDisplay: bf6Scrapes.timePlayedDisplay,
+        scrapedAt: bf6Scrapes.scrapedAt,
+    })
+        .from(bf6Scrapes)
+        .where(lte(bf6Scrapes.scrapedAt, monthEnd))
+        .orderBy(bf6Scrapes.scrapedAt);
+
+    const byPlayer = new Map<string, typeof allScrapes>();
+    for (const s of allScrapes) {
+        if (!byPlayer.has(s.playerId)) byPlayer.set(s.playerId, []);
+        byPlayer.get(s.playerId)!.push(s);
+    }
+
+    const results: PlayerMonthRow[] = [];
+
+    for (const player of allPlayers) {
+        const scrapes = byPlayer.get(player.id) || [];
+
+        const inMonth = scrapes.filter((s) => s.scrapedAt >= monthStart && s.scrapedAt < monthEnd);
+        const beforeMonth = scrapes.filter((s) => s.scrapedAt < monthStart);
+
+        if (inMonth.length === 0 && beforeMonth.length === 0) {
+            results.push({
+                playerId: player.id,
+                user: player.user,
+                platformUserHandle: player.platformUserHandle,
+                kills: 0,
+                deaths: 0,
+                timePlayedValue: 0,
+                timePlayedDisplay: "-",
+                kdRatio: 0,
+                status: "not_tracked",
+            });
+            continue;
+        }
+
+        if (inMonth.length === 0) {
+            results.push({
+                playerId: player.id,
+                user: player.user,
+                platformUserHandle: player.platformUserHandle,
+                kills: 0,
+                deaths: 0,
+                timePlayedValue: 0,
+                timePlayedDisplay: "0s",
+                kdRatio: 0,
+                status: "zero",
+            });
+            continue;
+        }
+
+        const lastInMonth = inMonth[inMonth.length - 1];
+
+        if (beforeMonth.length === 0) {
+            const kd = lastInMonth.deaths > 0
+                ? Math.round((lastInMonth.kills / lastInMonth.deaths) * 100)
+                : lastInMonth.kills * 100;
+            results.push({
+                playerId: player.id,
+                user: player.user,
+                platformUserHandle: player.platformUserHandle,
+                kills: lastInMonth.kills,
+                deaths: lastInMonth.deaths,
+                timePlayedValue: lastInMonth.timePlayedValue,
+                timePlayedDisplay: formatHistoryTime(lastInMonth.timePlayedValue),
+                kdRatio: kd,
+                status: "new",
+            });
+            continue;
+        }
+
+        const lastBefore = beforeMonth[beforeMonth.length - 1];
+        const kills = lastInMonth.kills - lastBefore.kills;
+        const deaths = lastInMonth.deaths - lastBefore.deaths;
+        const time = lastInMonth.timePlayedValue - lastBefore.timePlayedValue;
+        const kd = deaths > 0 ? Math.round((kills / deaths) * 100) : kills * 100;
+
+        results.push({
+            playerId: player.id,
+            user: player.user,
+            platformUserHandle: player.platformUserHandle,
+            kills,
+            deaths,
+            timePlayedValue: time,
+            timePlayedDisplay: formatHistoryTime(time),
+            kdRatio: kd,
+            status: "ok",
+        });
+    }
+
+    return [...results].sort((a, b) => {
+        if (a.status === "not_tracked" && b.status !== "not_tracked") return 1;
+        if (a.status !== "not_tracked" && b.status === "not_tracked") return -1;
+        switch (sortBy) {
+            case "deaths": return b.deaths - a.deaths;
+            case "timePlayed": return b.timePlayedValue - a.timePlayedValue;
+            case "kd": return b.kdRatio - a.kdRatio;
+            default: return b.kills - a.kills;
+        }
+    });
 }
