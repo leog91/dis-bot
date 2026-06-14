@@ -92,6 +92,26 @@ function resolveSubcommand(raw: string | undefined): SubCommand | null {
     return null;
 }
 
+async function safeReply(msg: Message, content: string): Promise<Message | void> {
+    try {
+        return await msg.reply(content);
+    } catch (err) {
+        const isUnknownReference =
+            typeof err === "object" &&
+            err !== null &&
+            "code" in err &&
+            (err as any).code === 50035 &&
+            typeof (err as any).message === "string" &&
+            (err as any).message.includes("MESSAGE_REFERENCE_UNKNOWN_MESSAGE");
+
+        if (isUnknownReference && "send" in msg.channel && typeof msg.channel.send === "function") {
+            return await msg.channel.send(content);
+        }
+
+        throw err;
+    }
+}
+
 const itemSubcommands: Record<string, BF6ItemLeaderboardKey> = {
     rpg: "rpg",
     c4: "c4",
@@ -129,7 +149,7 @@ export default defineCommand({
     type: "TEXT",
     async execute(msg: Message, args: string[]) {
         if (!(msg.channel instanceof TextChannel)) {
-            await msg.reply("This command can only be used in a text channel.");
+            await safeReply(msg, "This command can only be used in a text channel.");
             return;
         }
 
@@ -141,7 +161,7 @@ export default defineCommand({
             const msgText = hasInput
                 ? `Unknown subcommand. Available: ${SUBCOMMANDS_LIST}`
                 : "Te falta el subcommand máquina:\n" + SUBCOMMANDS_LIST;
-            await msg.reply(msgText);
+            await safeReply(msg, msgText);
             return;
         }
 
@@ -149,11 +169,11 @@ export default defineCommand({
             // 🔐 RESTRICTED REFRESH
             if (sub === "refresh") {
                 if (msg.author.id !== REFRESH_OWNER_ID) {
-                    await msg.reply("🚫 5 USD to leog");
+                    await safeReply(msg, "🚫 5 USD to leog");
                     return;
                 }
                 const { durationMs } = await refreshBF6Data();
-                await msg.reply(
+                await safeReply(msg, 
                     `force refresh completed in ${durationMs.toFixed(0)} ms.  \n https://is.gd/1Cm9Ta`
                 );
 
@@ -164,7 +184,7 @@ export default defineCommand({
             if (sub === "playStyle") {
                 const userArg = args.slice(1).join(" ").trim();
                 if (!userArg) {
-                    await msg.reply("Usage: `bf6 playStyle [user]`");
+                    await safeReply(msg, "Usage: `bf6 playStyle [user]`");
                     return;
                 }
 
@@ -173,12 +193,12 @@ export default defineCommand({
                 const playstyle = await getPlayerWeaponPlaystyle(userArg);
 
                 if (!playstyle) {
-                    await msg.reply(`No BF6 player found for "${userArg}".`);
+                    await safeReply(msg, `No BF6 player found for "${userArg}".`);
                     return;
                 }
 
                 if (!playstyle.weapons.length) {
-                    await msg.reply(`No weapon playstyle data (>=1h) found for ${playstyle.platformUserHandle}.`);
+                    await safeReply(msg, `No weapon playstyle data (>=1h) found for ${playstyle.platformUserHandle}.`);
                     return;
                 }
 
@@ -193,7 +213,7 @@ export default defineCommand({
                     ? `\n...showing top 20/${playstyle.weapons.length} weapons`
                     : "";
 
-                await msg.reply(
+                await safeReply(msg, 
                     ` **${playstyle.platformUserHandle}** playStyle \n` +
                     "```text\n" +
                     "weapon      | time    | kills | ads/hip       | hs%    | acc%\n" +
@@ -211,7 +231,7 @@ export default defineCommand({
                 const rows = await getItemLeaderboard(itemSub, sortBy);
 
                 if (!rows.length) {
-                    await msg.reply(`No current ${itemTitles[itemSub]} data found yet.`);
+                    await safeReply(msg, `No current ${itemTitles[itemSub]} data found yet.`);
                     return;
                 }
 
@@ -235,7 +255,7 @@ export default defineCommand({
                     ? `\n...showing top 20/${rows.length} players`
                     : "";
 
-                await msg.reply(
+                await safeReply(msg, 
                     ` **${itemTitles[itemSub]}** (${sortBy})\n` +
                     "```text\n" +
                     `#  | ${"player".padEnd(playerColWidth, " ")} | ${valueLabel.padEnd(7, " ")}\n` +
@@ -253,7 +273,7 @@ export default defineCommand({
                 if (!arg1) {
                     const months = await getMonthlyHistory();
                     if (!months.length) {
-                        await msg.reply("No monthly history data available yet.");
+                        await safeReply(msg, "No monthly history data available yet.");
                         return;
                     }
 
@@ -262,7 +282,7 @@ export default defineCommand({
                         return `${m.month} | ${m.timePlayedDisplay.padEnd(9)} | ${String(m.kills).padStart(7)} | ${String(m.deaths).padStart(7)} | ${kd.padStart(5)}`;
                     });
 
-                    await msg.reply(
+                    await safeReply(msg, 
                         ` **BF6 Monthly History**\n` +
                         "```text\n" +
                         "month   | time      |  kills  | deaths |   k/d\n" +
@@ -289,7 +309,7 @@ export default defineCommand({
                     const sortLabel = sortBy === "timePlayed" ? "time" : sortBy;
 
                     if (!rows.length) {
-                        await msg.reply(`No player data found for ${monthName} ${y}.`);
+                        await safeReply(msg, `No player data found for ${monthName} ${y}.`);
                         return;
                     }
 
@@ -326,7 +346,7 @@ export default defineCommand({
                         ? `\n*${notTrackedCount} player(s) not tracked in this period*`
                         : "";
 
-                    await msg.reply(
+                    await safeReply(msg, 
                         ` **BF6 History - ${monthName} ${y}** (sorted by ${sortLabel})\n` +
                         "```text\n" +
                         ` # | ${"player".padEnd(playerColWidth, " ")} | time      |  kills  | deaths |   k/d\n` +
@@ -340,12 +360,12 @@ export default defineCommand({
 
                 const playerHistory = await getPlayerMonthlyHistory(arg1);
                 if (!playerHistory) {
-                    await msg.reply(`No BF6 player found for "${arg1}".`);
+                    await safeReply(msg, `No BF6 player found for "${arg1}".`);
                     return;
                 }
 
                 if (!playerHistory.months.length) {
-                    await msg.reply(`No monthly history found for ${playerHistory.player.platformUserHandle}.`);
+                    await safeReply(msg, `No monthly history found for ${playerHistory.player.platformUserHandle}.`);
                     return;
                 }
 
@@ -354,7 +374,7 @@ export default defineCommand({
                     return `${m.month} | ${m.timePlayedDisplay.padEnd(9)} | ${String(m.kills).padStart(7)} | ${String(m.deaths).padStart(7)} | ${kd.padStart(5)}`;
                 });
 
-                await msg.reply(
+                await safeReply(msg, 
                     ` **${playerHistory.player.platformUserHandle} - Monthly History**\n` +
                     "```text\n" +
                     "month   | time      |  kills  | deaths |   k/d\n" +
@@ -469,18 +489,18 @@ export default defineCommand({
                 case "class": {
                     const userArg = args.slice(1).join(" ").trim();
                     if (!userArg) {
-                        await msg.reply("Usage: `bf6 class [user]`");
+                        await safeReply(msg, "Usage: `bf6 class [user]`");
                         return;
                     }
 
                     const playerClasses = await getPlayerClassStats(userArg);
                     if (!playerClasses) {
-                        await msg.reply(`No BF6 player found for "${userArg}".`);
+                        await safeReply(msg, `No BF6 player found for "${userArg}".`);
                         return;
                     }
 
                     if (!playerClasses.classes.length) {
-                        await msg.reply(`No class data found for ${playerClasses.platformUserHandle}.`);
+                        await safeReply(msg, `No class data found for ${playerClasses.platformUserHandle}.`);
                         return;
                     }
 
@@ -493,7 +513,7 @@ export default defineCommand({
                         return `${cls.className.padEnd(8)} | ${fmtTime(cls.timePlayedDisplay)} | ${kd.padStart(5)} | ${fmtK(cls.kills)} | ${fmtK(cls.deaths)} | ${fmtK(cls.assists)} | ${fmtK(cls.revives)} | ${fmtK(cls.deployments)}`;
                     });
 
-                    await msg.reply(
+                    await safeReply(msg, 
                         ` **${playerClasses.platformUserHandle}** Classes\n` +
                         "```text\n" +
                         "class    | time    | k/d   | kills | deaths|assists|revives| deploys\n" +
@@ -546,7 +566,7 @@ export default defineCommand({
                         ? `\n...showing top 15/${classLeaderboard.length} players`
                         : "";
 
-                    await msg.reply(
+                    await safeReply(msg, 
                         ` **${classDisplayName}** Class Leaderboard (${sortBy})\n` +
                         "```text\n" +
                         `#  | ${"player".padEnd(playerColWidth, " ")} | time    | k/d   | kills | deaths|assists|revives| deploys\n` +
@@ -559,19 +579,19 @@ export default defineCommand({
 
 
                 default:
-                    await msg.reply(`Unknown subcommand. Available: ${SUBCOMMANDS_LIST}`);
+                    await safeReply(msg, `Unknown subcommand. Available: ${SUBCOMMANDS_LIST}`);
                     return;
             }
 
             if (!content) {
-                await msg.reply("No rank data available yet.");
+                await safeReply(msg, "No rank data available yet.");
                 return;
             }
 
-            await msg.reply(prefix + content);
+            await safeReply(msg, prefix + content);
         } catch (err) {
             console.error(err);
-            await msg.reply("⚠️ Could not load BF6 rank data.");
+            await safeReply(msg, "⚠️ Could not load BF6 rank data.");
         }
     }
 });
