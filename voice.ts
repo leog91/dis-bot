@@ -145,6 +145,7 @@ export class GuildVoiceManager {
     randomQueues = new Map<string, string[]>();
     queue: string[] = [];
     currentMsg: Message | null = null;
+    currentTempFile: string | null = null;
 
     constructor(guildId: string) {
         this.guildId = guildId;
@@ -164,6 +165,10 @@ export class GuildVoiceManager {
         if (!this.player) {
             this.player = createAudioPlayer();
             this.player.on(AudioPlayerStatus.Idle, () => {
+                if (this.currentTempFile) {
+                    fs.unlink(this.currentTempFile, () => {});
+                    this.currentTempFile = null;
+                }
                 if (this.queue.length > 0 && this.currentMsg) {
                     const nextFile = this.queue.shift()!;
                     this.playResource(nextFile);
@@ -171,6 +176,10 @@ export class GuildVoiceManager {
             });
             this.player.on("error", (err) => {
                 console.error("Audio player error:", err);
+                if (this.currentTempFile) {
+                    fs.unlink(this.currentTempFile, () => {});
+                    this.currentTempFile = null;
+                }
                 if (this.currentMsg) {
                     this.currentMsg.reply("⚠️ Audio playback error.");
                 }
@@ -264,17 +273,8 @@ export class GuildVoiceManager {
         // TTS interrupts any queued playback
         this.queue = [];
         this.currentMsg = msg;
+        this.currentTempFile = tempFile;
         player.play(resource);
-
-        player.once(AudioPlayerStatus.Idle, () => {
-            fs.unlink(tempFile, () => { });
-        });
-
-        player.once("error", (err) => {
-            console.error("TTS error:", err);
-            fs.unlink(tempFile, () => { });
-            msg.reply(" TTS playback failed.");
-        });
     }
 
     async playTTSInChannel(channelId: string, adapterCreator: any, text: string, lang = "en") {
@@ -297,16 +297,8 @@ export class GuildVoiceManager {
 
         this.queue = [];
         this.currentMsg = null;
+        this.currentTempFile = tempFile;
         player.play(resource);
-
-        player.once(AudioPlayerStatus.Idle, () => {
-            fs.unlink(tempFile, () => { });
-        });
-
-        player.once("error", (err) => {
-            console.error("TTS error:", err);
-            fs.unlink(tempFile, () => { });
-        });
     }
 
     // Join explicitly
