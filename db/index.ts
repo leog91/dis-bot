@@ -17,6 +17,8 @@ const dbFilePath = isAbsolute(dbPathFromEnv) ? dbPathFromEnv : resolve(process.c
 mkdirSync(dirname(dbFilePath), { recursive: true });
 
 const client = new Database(dbFilePath);
+client.run("PRAGMA journal_mode = WAL;");
+client.run("PRAGMA busy_timeout = 5000;");
 export const db = drizzle(client, { schema });
 
 const dbDir = dirname(fileURLToPath(import.meta.url));
