@@ -2,6 +2,7 @@ import { Message, TextChannel } from "discord.js";
 import { defineCommand } from "..";
 import {
     createVidProgressMessage,
+    deleteOriginalMessage,
     getVidSourceInfo,
     resolveVidOutputUrl,
     sendVidResponse,
@@ -59,6 +60,8 @@ export default defineCommand({
             return;
         }
 
+        await deleteOriginalMessage(msg);
+
         let progress: VidProgressMessage | undefined;
 
         try {
@@ -96,7 +99,7 @@ export default defineCommand({
         } catch (err) {
             console.error(err);
             await progress?.remove();
-            await msg.channel.send("An error occurred while processing the video.");
+            await msg.channel.send(`by ${msg.author}:\n${url}`);
         }
     }
 });
