@@ -92,6 +92,25 @@ function resolveSubcommand(raw: string | undefined): SubCommand | null {
     return null;
 }
 
+function statusMarker(status: string): string {
+    switch (status) {
+        case "private": return " 🔒";
+        case "inactive": return " ⚠️";
+        case "not_found": return " ❓";
+        default: return "";
+    }
+}
+
+function leaderboardStatusMarker(status: string): string {
+    // Compact markers used inside leaderboard value lines.
+    switch (status) {
+        case "private": return "🔒 ";
+        case "inactive": return "⚠️ ";
+        case "not_found": return "❓ ";
+        default: return "";
+    }
+}
+
 async function safeReply(msg: Message, content: string): Promise<Message | void> {
     try {
         return await msg.reply(content);
@@ -239,29 +258,38 @@ export default defineCommand({
                 const valueLabel = sortBy === "timePlayed" ? "time" : "kills";
                 const playerColWidth = Math.max(
                     "player".length,
-                    ...visibleRows.map((row) => row.platformUserHandle.length)
+                    ...visibleRows.map((row) => row.platformUserHandle.length + (row.status !== "active" ? 2 : 0))
                 );
-                const fmtPlayer = (name: string) => name.padEnd(playerColWidth, " ");
-                const fmtValue = (kills: number, timePlayedDisplay: string) =>
-                    sortBy === "timePlayed"
+                const fmtPlayer = (name: string, status: string) => (name + statusMarker(status)).padEnd(playerColWidth, " ");
+                const fmtValue = (kills: number, timePlayedDisplay: string, status: string) => {
+                    if (status !== "active") return "-".padStart(7, " ");
+                    return sortBy === "timePlayed"
                         ? timePlayedDisplay.slice(0, 7).padEnd(7, " ")
                         : `${kills}`.padStart(7, " ");
+                };
 
                 const tableRows = visibleRows.map((row, idx) =>
-                    `${String(idx + 1).padStart(2, " ")} | ${fmtPlayer(row.platformUserHandle)} | ${fmtValue(row.kills, row.timePlayedDisplay)}`
+                    `${String(idx + 1).padStart(2, " ")} | ${fmtPlayer(row.platformUserHandle, row.status)} | ${fmtValue(row.kills, row.timePlayedDisplay, row.status)}`
                 );
 
                 const trimmedNote = rows.length > 20
                     ? `\n...showing top 20/${rows.length} players`
                     : "";
 
-                await safeReply(msg, 
+                const privateCount = rows.filter((r) => r.status === "private").length;
+                const inactiveCount = rows.filter((r) => r.status === "inactive" || r.status === "not_found").length;
+                const statusNote = (privateCount > 0 || inactiveCount > 0)
+                    ? `\n*${privateCount > 0 ? `${privateCount} private ` : ""}${inactiveCount > 0 ? `${inactiveCount} inactive/not found` : ""}*`
+                    : "";
+
+                await safeReply(msg,
                     ` **${itemTitles[itemSub]}** (${sortBy})\n` +
                     "```text\n" +
                     `#  | ${"player".padEnd(playerColWidth, " ")} | ${valueLabel.padEnd(7, " ")}\n` +
                     tableRows.join("\n") +
                     "\n```" +
-                    trimmedNote
+                    trimmedNote +
+                    statusNote
                 );
                 return;
             }
@@ -277,17 +305,24 @@ export default defineCommand({
                         return;
                     }
 
+                    const statusWidth = 9;
                     const rows = months.map((m) => {
                         const kd = (m.kdRatio / 100).toFixed(2);
-                        return `${m.month} | ${m.timePlayedDisplay.padEnd(9)} | ${String(m.kills).padStart(7)} | ${String(m.deaths).padStart(7)} | ${kd.padStart(5)}`;
+                        const statusLabel = m.status === "baseline" ? "baseline" : "";
+                        return `${m.month} | ${m.timePlayedDisplay.padEnd(9)} | ${String(m.kills).padStart(7)} | ${String(m.deaths).padStart(7)} | ${kd.padStart(5)} | ${statusLabel.padEnd(statusWidth)}`;
                     });
+
+                    const baselineNote = months.some((m) => m.status === "baseline")
+                        ? "\n*baseline = totals when tracking started*"
+                        : "";
 
                     await safeReply(msg, 
                         ` **BF6 Monthly History**\n` +
                         "```text\n" +
-                        "month   | time      |  kills  | deaths |   k/d\n" +
+                        `month   | time      |  kills  | deaths |   k/d | ${"status".padEnd(statusWidth)}\n` +
                         rows.join("\n") +
-                        "\n```"
+                        "\n```" +
+                        baselineNote
                     );
                     return;
                 }
@@ -318,42 +353,79 @@ export default defineCommand({
                         "player".length,
                         ...visibleRows.map((r) => r.platformUserHandle.length)
                     );
-                    const fmtPlayer = (name: string) => name.padEnd(playerColWidth, " ");
+                    const fmtPlayer = (name: string, status: string) => {
+                        const marker = statusMarker(status);
+                        return (name + marker).padEnd(playerColWidth + marker.length, " ");
+                    };
 
                     const fmtVal = (n: number, status: string) => {
-                        if (status === "not_tracked") return "-".padStart(7, " ");
-                        if (status === "new") return ("~" + n).padStart(7, " ");
+                        if (status === "not_tracked" || status === "private" || status === "inactive" || status === "not_found") return "-".padStart(7, " ");
+                        if (status === "baseline") return ("~" + n).padStart(7, " ");
                         return String(n).padStart(7, " ");
                     };
 
-                    const fmtTime = (display: string) => display.padEnd(9, " ");
+                    const fmtTime = (display: string, status: string) => {
+                        if (status === "not_tracked" || status === "private" || status === "inactive" || status === "not_found") return "-".padEnd(9, " ");
+                        if (status === "baseline") return ("~" + display).padEnd(9, " ").slice(0, 9);
+                        return display.padEnd(9, " ");
+                    };
 
                     const fmtKd = (ratio: number, status: string) => {
-                        if (status === "not_tracked") return "    -";
+                        if (status === "not_tracked" || status === "private" || status === "inactive" || status === "not_found") return "    -";
+                        if (status === "baseline") return ("~" + (ratio / 100).toFixed(2)).padStart(5, " ").slice(0, 5);
                         return (ratio / 100).toFixed(2).padStart(5, " ");
                     };
 
+                    const fmtStatus = (status: string) => {
+                        switch (status) {
+                            case "baseline": return "baseline";
+                            case "resumed": return "🔓 resumed";
+                            case "private": return "🔒 private";
+                            case "inactive": return "⚠️ inactive";
+                            case "not_found": return "❓ not found";
+                            case "not_tracked": return "not tracked";
+                            default: return "";
+                        }
+                    };
+
+                    const statusColWidth = Math.max(
+                        "status".length,
+                        ...visibleRows.map((r) => fmtStatus(r.status).length)
+                    );
+
                     const tableRows = visibleRows.map((row, idx) =>
-                        `${String(idx + 1).padStart(2, " ")} | ${fmtPlayer(row.platformUserHandle)} | ${fmtTime(row.timePlayedDisplay)} | ${fmtVal(row.kills, row.status)} | ${fmtVal(row.deaths, row.status)} | ${fmtKd(row.kdRatio, row.status)}`
+                        `${String(idx + 1).padStart(2, " ")} | ${fmtPlayer(row.platformUserHandle, row.status)} | ${fmtTime(row.timePlayedDisplay, row.status)} | ${fmtVal(row.kills, row.status)} | ${fmtVal(row.deaths, row.status)} | ${fmtKd(row.kdRatio, row.status)} | ${fmtStatus(row.status).padEnd(statusColWidth, " ")}`
                     );
 
                     const trimmedNote = rows.length > 20
                         ? `\n...showing top 20/${rows.length} players`
                         : "";
 
+                    const privateCount = rows.filter((r) => r.status === "private").length;
+                    const inactiveCount = rows.filter((r) => r.status === "inactive" || r.status === "not_found").length;
                     const notTrackedCount = rows.filter((r) => r.status === "not_tracked").length;
-                    const notTrackedNote = notTrackedCount > 0
-                        ? `\n*${notTrackedCount} player(s) not tracked in this period*`
+                    const resumedCount = rows.filter((r) => r.status === "resumed").length;
+                    const baselineCount = rows.filter((r) => r.status === "baseline").length;
+
+                    const notes: string[] = [];
+                    if (privateCount > 0) notes.push(`${privateCount} player(s) private`);
+                    if (inactiveCount > 0) notes.push(`${inactiveCount} player(s) inactive/not found`);
+                    if (notTrackedCount > 0) notes.push(`${notTrackedCount} player(s) not tracked`);
+                    if (resumedCount > 0) notes.push(`${resumedCount} player(s) resumed (catch-up stats)`);
+                    if (baselineCount > 0) notes.push(`${baselineCount} player(s) baseline (first tracked month)`);
+
+                    const statusNote = notes.length > 0
+                        ? `\n*${notes.join(" | ")}*`
                         : "";
 
                     await safeReply(msg, 
                         ` **BF6 History - ${monthName} ${y}** (sorted by ${sortLabel})\n` +
                         "```text\n" +
-                        ` # | ${"player".padEnd(playerColWidth, " ")} | time      |  kills  | deaths |   k/d\n` +
+                        ` # | ${"player".padEnd(playerColWidth, " ")} | time      |  kills  | deaths |   k/d | ${"status".padEnd(statusColWidth, " ")}\n` +
                         tableRows.join("\n") +
                         "\n```" +
                         trimmedNote +
-                        notTrackedNote
+                        statusNote
                     );
                     return;
                 }
@@ -369,17 +441,29 @@ export default defineCommand({
                     return;
                 }
 
+                const statusWidth = 9;
                 const rows = playerHistory.months.map((m) => {
                     const kd = (m.kdRatio / 100).toFixed(2);
-                    return `${m.month} | ${m.timePlayedDisplay.padEnd(9)} | ${String(m.kills).padStart(7)} | ${String(m.deaths).padStart(7)} | ${kd.padStart(5)}`;
+                    const statusLabel = m.status === "baseline" ? "baseline" : m.status === "resumed" ? "🔓 resumed" : "";
+                    return `${m.month} | ${m.timePlayedDisplay.padEnd(9)} | ${String(m.kills).padStart(7)} | ${String(m.deaths).padStart(7)} | ${kd.padStart(5)} | ${statusLabel.padEnd(statusWidth)}`;
                 });
+
+                const notes: string[] = [];
+                if (playerHistory.months.some((m) => m.status === "baseline")) {
+                    notes.push("baseline = totals when tracking started");
+                }
+                if (playerHistory.months.some((m) => m.status === "resumed")) {
+                    notes.push("🔓 resumed = catch-up stats after a private/missing period");
+                }
+                const noteText = notes.length > 0 ? "\n*" + notes.join(" | ") + "*" : "";
 
                 await safeReply(msg, 
                     ` **${playerHistory.player.platformUserHandle} - Monthly History**\n` +
                     "```text\n" +
-                    "month   | time      |  kills  | deaths |   k/d\n" +
+                    `month   | time      |  kills  | deaths |   k/d | ${"status".padEnd(statusWidth)}\n` +
                     rows.join("\n") +
-                    "\n```"
+                    "\n```" +
+                    noteText
                 );
                 return;
             }
@@ -413,28 +497,28 @@ export default defineCommand({
                 case "kills":
                     sorted = [...bfdata].sort((a, b) => b.kills - a.kills);
                     content = sorted
-                        .map((p: any) => `${p.platformUserHandle} - ${sign}${p.kills} kills`)
+                        .map((p: any) => `${leaderboardStatusMarker(p.status)}${p.platformUserHandle} - ${sign}${p.kills} kills`)
                         .join("\n");
                     break;
 
                 case "deaths":
                     sorted = [...bfdata].sort((a, b) => b.deaths - a.deaths);
                     content = sorted
-                        .map((p) => `${p.platformUserHandle} - ${sign}${p.deaths} deaths`)
+                        .map((p) => `${leaderboardStatusMarker(p.status)}${p.platformUserHandle} - ${sign}${p.deaths} deaths`)
                         .join("\n");
                     break;
 
                 case "revives":
                     sorted = [...bfdata].sort((a, b) => b.revives - a.revives);
                     content = sorted
-                        .map((p) => `${p.platformUserHandle} - ${sign}${p.revives} revives`)
+                        .map((p) => `${leaderboardStatusMarker(p.status)}${p.platformUserHandle} - ${sign}${p.revives} revives`)
                         .join("\n");
                     break;
 
                 case "score":
                     sorted = [...bfdata].sort((a, b) => b.score - a.score);
                     content = sorted
-                        .map((p) => `${p.platformUserHandle} - ${sign}${p.score} score`)
+                        .map((p) => `${leaderboardStatusMarker(p.status)}${p.platformUserHandle} - ${sign}${p.score} score`)
                         .join("\n");
                     break;
 
@@ -449,7 +533,7 @@ export default defineCommand({
                         sorted = [...bfdata].sort((a, b) => b.careerPlayerRank - a.careerPlayerRank);
                     }
                     content = sorted
-                        .map((p) => `${p.platformUserHandle} - Rank ${p.careerPlayerRank}`)
+                        .map((p) => `${leaderboardStatusMarker(p.status)}${p.platformUserHandle} - Rank ${p.careerPlayerRank}`)
                         .join("\n");
                     break;
 
@@ -459,12 +543,13 @@ export default defineCommand({
                     );
                     content = sorted
                         .map((p) => {
+                            const marker = leaderboardStatusMarker(p.status);
                             if (isProgress) {
                                 // Convert seconds to hours
                                 const hours = (p.timePlayedValue / 3600).toFixed(1);
-                                return `${p.platformUserHandle} - +${hours}h played`;
+                                return `${marker}${p.platformUserHandle} - +${hours}h played`;
                             }
-                            return `${p.platformUserHandle} - ${p.timePlayedDisplay}`;
+                            return `${marker}${p.platformUserHandle} - ${p.timePlayedDisplay}`;
                         })
                         .join("\n");
                     break;
@@ -477,7 +562,7 @@ export default defineCommand({
                         (a, b) => b.timePlayedValue - a.timePlayedValue
                     );
                     content = sorted
-                        .map((p) => `[${p.platformUserHandle}](${p.profileUrl})`)
+                        .map((p) => `${leaderboardStatusMarker(p.status)}[${p.platformUserHandle}](${p.profileUrl})`)
                         .join("\n");
                     break;
 
@@ -550,29 +635,36 @@ export default defineCommand({
                     const visibleRows = classLeaderboard.slice(0, 15);
                     const playerColWidth = Math.max(
                         "player".length,
-                        ...visibleRows.map((row) => row.platformUserHandle.length)
+                        ...visibleRows.map((row) => row.platformUserHandle.length + (row.status !== "active" ? 2 : 0))
                     );
-                    const fmtPlayer = (name: string) => name.padEnd(playerColWidth, " ");
-                    const fmtTime = (time: string) => time.slice(0, 7).padEnd(7, " ");
-                    const fmtK = (n: number) => String(n).padStart(5, " ");
-                    const fmtKD = (ratio: number) => (ratio / 100).toFixed(2);
+                    const fmtPlayer = (name: string, status: string) => (name + statusMarker(status)).padEnd(playerColWidth, " ");
+                    const fmtTime = (time: string, status: string) => status !== "active" ? "-".padEnd(7, " ") : time.slice(0, 7).padEnd(7, " ");
+                    const fmtK = (n: number, status: string) => status !== "active" ? "-".padStart(5, " ") : String(n).padStart(5, " ");
+                    const fmtKD = (ratio: number, status: string) => status !== "active" ? "-".padStart(5, " ") : (ratio / 100).toFixed(2).padStart(5, " ");
 
                     const tableRows = visibleRows.map((row, idx) => {
-                        const kd = fmtKD(row.kdRatio);
-                        return `${String(idx + 1).padStart(2, " ")} | ${fmtPlayer(row.platformUserHandle)} | ${fmtTime(row.timePlayedDisplay)} | ${kd.padStart(5)} | ${fmtK(row.kills)} | ${fmtK(row.deaths)} | ${fmtK(row.assists)} | ${fmtK(row.revives)} | ${fmtK(row.deployments)}`;
+                        const kd = fmtKD(row.kdRatio, row.status);
+                        return `${String(idx + 1).padStart(2, " ")} | ${fmtPlayer(row.platformUserHandle, row.status)} | ${fmtTime(row.timePlayedDisplay, row.status)} | ${kd} | ${fmtK(row.kills, row.status)} | ${fmtK(row.deaths, row.status)} | ${fmtK(row.assists, row.status)} | ${fmtK(row.revives, row.status)} | ${fmtK(row.deployments, row.status)}`;
                     });
 
                     const trimmedNote = classLeaderboard.length > 15
                         ? `\n...showing top 15/${classLeaderboard.length} players`
                         : "";
 
-                    await safeReply(msg, 
+                    const privateCount = classLeaderboard.filter((r) => r.status === "private").length;
+                    const inactiveCount = classLeaderboard.filter((r) => r.status === "inactive" || r.status === "not_found").length;
+                    const statusNote = (privateCount > 0 || inactiveCount > 0)
+                        ? `\n*${privateCount > 0 ? `${privateCount} private ` : ""}${inactiveCount > 0 ? `${inactiveCount} inactive/not found` : ""}*`
+                        : "";
+
+                    await safeReply(msg,
                         ` **${classDisplayName}** Class Leaderboard (${sortBy})\n` +
                         "```text\n" +
                         `#  | ${"player".padEnd(playerColWidth, " ")} | time    | k/d   | kills | deaths|assists|revives| deploys\n` +
                         tableRows.join("\n") +
                         "\n```" +
-                        trimmedNote
+                        trimmedNote +
+                        statusNote
                     );
                     return;
                 }

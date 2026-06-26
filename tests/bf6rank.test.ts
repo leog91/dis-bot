@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import {
     normalizeKey,
     getStatEntry,
@@ -11,6 +11,7 @@ import {
     extractWeaponPlaystyles,
     extractItemSnapshots,
     extractClassSnapshots,
+    fetchPlayerData,
 } from "../utils/bf6rank";
 
 describe("normalizeKey", () => {
@@ -387,5 +388,62 @@ describe("extractClassSnapshots", () => {
                 kdRatio: 200,
             },
         ]);
+    });
+});
+
+describe("fetchPlayerData status handling", () => {
+    const originalFetch = globalThis.fetch;
+    const originalError = console.error;
+
+    beforeEach(() => {
+        console.error = () => {};
+    });
+
+    afterEach(() => {
+        globalThis.fetch = originalFetch;
+        console.error = originalError;
+    });
+
+    it("returns private status on 403", async () => {
+        globalThis.fetch = (() =>
+            Promise.resolve({
+                ok: false,
+                status: 403,
+                statusText: "Forbidden",
+            } as Response)) as unknown as typeof fetch;
+
+        const result = await fetchPlayerData({ userName: "privateUser", id: "private-id" });
+        expect(result).toEqual({ ok: false, status: "private" });
+    });
+
+    it("returns not_found status on 404", async () => {
+        globalThis.fetch = (() =>
+            Promise.resolve({
+                ok: false,
+                status: 404,
+                statusText: "Not Found",
+            } as Response)) as unknown as typeof fetch;
+
+        const result = await fetchPlayerData({ userName: "missingUser", id: "missing-id" });
+        expect(result).toEqual({ ok: false, status: "not_found" });
+    });
+
+    it("returns inactive status on other errors", async () => {
+        globalThis.fetch = (() =>
+            Promise.resolve({
+                ok: false,
+                status: 500,
+                statusText: "Internal Server Error",
+            } as Response)) as unknown as typeof fetch;
+
+        const result = await fetchPlayerData({ userName: "errorUser", id: "error-id" });
+        expect(result).toEqual({ ok: false, status: "inactive" });
+    });
+
+    it("returns inactive status on network exceptions", async () => {
+        globalThis.fetch = (() => Promise.reject(new Error("network failure"))) as unknown as typeof fetch;
+
+        const result = await fetchPlayerData({ userName: "networkUser", id: "network-id" });
+        expect(result).toEqual({ ok: false, status: "inactive" });
     });
 });

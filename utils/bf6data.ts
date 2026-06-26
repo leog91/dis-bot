@@ -1,5 +1,5 @@
 import { db } from "../db/index";
-import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6WeaponPlaystyles, bf6ClassSnapshots } from "../db/schema";
+import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6WeaponPlaystyles, bf6ClassSnapshots, type BF6PlayerStatus } from "../db/schema";
 import { desc, eq, sql, and, lt, gt, lte, gte } from "drizzle-orm";
 import { PlayerRank, updateBf6Data } from "./bf6rank";
 
@@ -29,6 +29,7 @@ export type BF6ItemLeaderboardRow = {
     user: string;
     platformUserHandle: string;
     profileUrl: string;
+    status: BF6PlayerStatus;
     kills: number;
     timePlayedValue: number;
     timePlayedDisplay: string;
@@ -51,6 +52,7 @@ export const getLatestScrapes = async () => {
         user: bf6Players.user,
         platformUserHandle: bf6Players.platformUserHandle,
         profileUrl: bf6Players.profileUrl,
+        status: bf6Players.status,
         kills: bf6Scrapes.kills,
         deaths: bf6Scrapes.deaths,
         revives: bf6Scrapes.revives,
@@ -89,8 +91,9 @@ export async function getProgressData(daysInfo: string): Promise<{ data: any[], 
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() - days);
 
-    // 2. Fetch Latest Data
-    const currentData = await getLatestScrapes();
+    // 2. Fetch Latest Data (only active players have meaningful current stats)
+    const latestScrapes = await getLatestScrapes();
+    const currentData = latestScrapes.filter((p) => p.status === "active");
     if (!currentData.length) return null;
 
     // 3. Fetch Historical Data (OPTIMIZED with FALLBACK)
@@ -318,6 +321,7 @@ export async function getItemLeaderboard(
         user: bf6Players.user,
         platformUserHandle: bf6Players.platformUserHandle,
         profileUrl: bf6Players.profileUrl,
+        status: bf6Players.status,
     }).from(bf6Players);
 
     const snapshots = await db.select({
@@ -341,6 +345,7 @@ export async function getItemLeaderboard(
             user: player.user,
             platformUserHandle: player.platformUserHandle,
             profileUrl: player.profileUrl,
+            status: player.status,
             kills: snap?.kills ?? 0,
             timePlayedValue: snap?.timePlayedValue ?? 0,
             timePlayedDisplay: snap?.timePlayedDisplay ?? "0s",
@@ -374,6 +379,7 @@ export type BF6ClassLeaderboardRow = {
     user: string;
     platformUserHandle: string;
     profileUrl: string;
+    status: BF6PlayerStatus;
     className: string;
     timePlayedValue: number;
     timePlayedDisplay: string;
@@ -396,6 +402,7 @@ export async function getClassLeaderboard(
         user: bf6Players.user,
         platformUserHandle: bf6Players.platformUserHandle,
         profileUrl: bf6Players.profileUrl,
+        status: bf6Players.status,
     }).from(bf6Players);
 
     const snapshots = await db.select({
@@ -425,6 +432,7 @@ export async function getClassLeaderboard(
             user: player.user,
             platformUserHandle: player.platformUserHandle,
             profileUrl: player.profileUrl,
+            status: player.status,
             className: snap?.className ?? classKey.replace("kit_", ""),
             timePlayedValue: snap?.timePlayedValue ?? 0,
             timePlayedDisplay: snap?.timePlayedDisplay ?? "0s",
@@ -502,6 +510,7 @@ export type MonthlyRow = {
     timePlayedValue: number;
     timePlayedDisplay: string;
     kdRatio: number;
+    status: "baseline" | "ok" | "resumed";
 };
 
 export type PlayerMonthRow = {
@@ -513,7 +522,7 @@ export type PlayerMonthRow = {
     timePlayedValue: number;
     timePlayedDisplay: string;
     kdRatio: number;
-    status: "ok" | "new" | "zero" | "not_tracked";
+    status: "baseline" | "ok" | "resumed" | "zero" | "private" | "inactive" | "not_found" | "not_tracked";
 };
 
 const MONTH_NAMES: Record<string, number> = {
@@ -550,12 +559,19 @@ export function resolveMonth(input: string): string | null {
     return `${year}-${String(monthNum).padStart(2, "0")}`;
 }
 
-function formatHistoryTime(seconds: number): string {
+export function formatHistoryTime(seconds: number): string {
     if (seconds <= 0) return "0s";
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     if (h > 0) return `${h}h ${m}m`;
     return `${m}m`;
+}
+
+export function previousCalendarMonth(ym: string): string {
+    const [year, month] = ym.split("-").map(Number);
+    const date = new Date(year, month - 1, 1);
+    date.setMonth(date.getMonth() - 1);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
 export async function getMonthlyHistory(): Promise<MonthlyRow[]> {
@@ -590,6 +606,7 @@ export async function getMonthlyHistory(): Promise<MonthlyRow[]> {
     for (let i = 0; i < sortedMonths.length; i++) {
         const month = sortedMonths[i];
         const prevMonth = i > 0 ? sortedMonths[i - 1] : null;
+        const isBaseline = i === 0;
 
         let totalKills = 0;
         let totalDeaths = 0;
@@ -599,7 +616,12 @@ export async function getMonthlyHistory(): Promise<MonthlyRow[]> {
             const curr = playerMonths.get(month);
             if (!curr) continue;
 
-            if (prevMonth) {
+            if (isBaseline) {
+                // First tracked month is the baseline: show cumulative totals at start of tracking.
+                totalKills += curr.kills;
+                totalDeaths += curr.deaths;
+                totalTime += curr.timePlayedValue;
+            } else if (prevMonth) {
                 const prev = playerMonths.get(prevMonth);
                 if (prev) {
                     totalKills += curr.kills - prev.kills;
@@ -618,6 +640,7 @@ export async function getMonthlyHistory(): Promise<MonthlyRow[]> {
             timePlayedValue: totalTime,
             timePlayedDisplay: formatHistoryTime(totalTime),
             kdRatio: kd,
+            status: isBaseline ? "baseline" : "ok",
         });
     }
 
@@ -680,15 +703,28 @@ export async function getPlayerMonthlyHistory(userInput: string): Promise<{
         let kills: number;
         let deaths: number;
         let time: number;
+        let status: MonthlyRow["status"];
 
         if (prev) {
             kills = curr.kills - prev.kills;
             deaths = curr.deaths - prev.deaths;
             time = curr.timePlayedValue - prev.timePlayedValue;
-        } else {
+            // If the previous active scrape is not the immediately preceding calendar month,
+            // the player was missing in between (likely private) and has now resumed.
+            status = previousCalendarMonth(month) === prevMonth ? "ok" : "resumed";
+        } else if (i === 0) {
+            // First tracked month for this player: cumulative baseline.
             kills = curr.kills;
             deaths = curr.deaths;
             time = curr.timePlayedValue;
+            status = "baseline";
+        } else {
+            // No scrape in the immediately previous month but this isn't the first month:
+            // the player was missing (likely private) and has resumed.
+            kills = curr.kills;
+            deaths = curr.deaths;
+            time = curr.timePlayedValue;
+            status = "resumed";
         }
 
         const kd = deaths > 0 ? Math.round((kills / deaths) * 100) : kills * 100;
@@ -700,6 +736,7 @@ export async function getPlayerMonthlyHistory(userInput: string): Promise<{
             timePlayedValue: time,
             timePlayedDisplay: formatHistoryTime(time),
             kdRatio: kd,
+            status,
         });
     }
 
@@ -719,12 +756,12 @@ export async function getMonthLeaderboard(
 
     const monthStart = new Date(targetYear, targetMonth - 1, 1);
     const monthEnd = new Date(targetYear, targetMonth, 1);
-    const prevMonthEnd = new Date(targetYear, targetMonth - 1, 1);
 
     const allPlayers = await db.select({
         id: bf6Players.id,
         user: bf6Players.user,
         platformUserHandle: bf6Players.platformUserHandle,
+        status: bf6Players.status,
     }).from(bf6Players);
 
     const allScrapes = await db.select({
@@ -753,33 +790,60 @@ export async function getMonthLeaderboard(
         const inMonth = scrapes.filter((s) => s.scrapedAt >= monthStart && s.scrapedAt < monthEnd);
         const beforeMonth = scrapes.filter((s) => s.scrapedAt < monthStart);
 
-        if (inMonth.length === 0 && beforeMonth.length === 0) {
-            results.push({
-                playerId: player.id,
-                user: player.user,
-                platformUserHandle: player.platformUserHandle,
-                kills: 0,
-                deaths: 0,
-                timePlayedValue: 0,
-                timePlayedDisplay: "-",
-                kdRatio: 0,
-                status: "not_tracked",
-            });
-            continue;
-        }
-
+        // If the profile is currently private/inactive and there is no fresh scrape
+        // for this month, surface that status instead of generic zero/not_tracked.
         if (inMonth.length === 0) {
-            results.push({
-                playerId: player.id,
-                user: player.user,
-                platformUserHandle: player.platformUserHandle,
-                kills: 0,
-                deaths: 0,
-                timePlayedValue: 0,
-                timePlayedDisplay: "0s",
-                kdRatio: 0,
-                status: "zero",
-            });
+            if (beforeMonth.length === 0) {
+                if (player.status === "private") {
+                    results.push({
+                        playerId: player.id,
+                        user: player.user,
+                        platformUserHandle: player.platformUserHandle,
+                        kills: 0,
+                        deaths: 0,
+                        timePlayedValue: 0,
+                        timePlayedDisplay: "-",
+                        kdRatio: 0,
+                        status: "private",
+                    });
+                } else if (player.status === "inactive" || player.status === "not_found") {
+                    results.push({
+                        playerId: player.id,
+                        user: player.user,
+                        platformUserHandle: player.platformUserHandle,
+                        kills: 0,
+                        deaths: 0,
+                        timePlayedValue: 0,
+                        timePlayedDisplay: "-",
+                        kdRatio: 0,
+                        status: player.status,
+                    });
+                } else {
+                    results.push({
+                        playerId: player.id,
+                        user: player.user,
+                        platformUserHandle: player.platformUserHandle,
+                        kills: 0,
+                        deaths: 0,
+                        timePlayedValue: 0,
+                        timePlayedDisplay: "-",
+                        kdRatio: 0,
+                        status: "not_tracked",
+                    });
+                }
+            } else {
+                results.push({
+                    playerId: player.id,
+                    user: player.user,
+                    platformUserHandle: player.platformUserHandle,
+                    kills: 0,
+                    deaths: 0,
+                    timePlayedValue: 0,
+                    timePlayedDisplay: "0s",
+                    kdRatio: 0,
+                    status: "zero",
+                });
+            }
             continue;
         }
 
@@ -798,7 +862,7 @@ export async function getMonthLeaderboard(
                 timePlayedValue: lastInMonth.timePlayedValue,
                 timePlayedDisplay: formatHistoryTime(lastInMonth.timePlayedValue),
                 kdRatio: kd,
-                status: "new",
+                status: "baseline",
             });
             continue;
         }
@@ -809,6 +873,12 @@ export async function getMonthLeaderboard(
         const time = lastInMonth.timePlayedValue - lastBefore.timePlayedValue;
         const kd = deaths > 0 ? Math.round((kills / deaths) * 100) : kills * 100;
 
+        // Catch-up month: the last known scrape before this month is not the immediately
+        // preceding calendar month (e.g. player was private in between).
+        const expectedPrevMonth = previousCalendarMonth(monthStr);
+        const actualPrevMonth = `${lastBefore.scrapedAt.getFullYear()}-${String(lastBefore.scrapedAt.getMonth() + 1).padStart(2, "0")}`;
+        const status = actualPrevMonth === expectedPrevMonth ? "ok" : "resumed";
+
         results.push({
             playerId: player.id,
             user: player.user,
@@ -818,13 +888,24 @@ export async function getMonthLeaderboard(
             timePlayedValue: time,
             timePlayedDisplay: formatHistoryTime(time),
             kdRatio: kd,
-            status: "ok",
+            status,
         });
     }
 
     return [...results].sort((a, b) => {
-        if (a.status === "not_tracked" && b.status !== "not_tracked") return 1;
-        if (a.status !== "not_tracked" && b.status === "not_tracked") return -1;
+        const rank: Record<PlayerMonthRow["status"], number> = {
+            ok: 0,
+            resumed: 0,
+            baseline: 1,
+            zero: 2,
+            private: 3,
+            inactive: 3,
+            not_found: 3,
+            not_tracked: 4,
+        };
+        if (rank[a.status] !== rank[b.status]) {
+            return rank[a.status] - rank[b.status];
+        }
         switch (sortBy) {
             case "deaths": return b.deaths - a.deaths;
             case "timePlayed": return b.timePlayedValue - a.timePlayedValue;

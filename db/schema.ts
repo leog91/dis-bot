@@ -1,10 +1,14 @@
 import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
+export const bf6PlayerStatus = ['active', 'private', 'inactive', 'not_found'] as const;
+export type BF6PlayerStatus = typeof bf6PlayerStatus[number];
+
 export const bf6Players = sqliteTable('bf6_players', {
     id: text('id').primaryKey(), // Using the ID from tracker.gg as the primary key
     platformUserHandle: text('platform_user_handle').notNull(),
     user: text('user').notNull(),
     profileUrl: text('profile_url').notNull(),
+    status: text('status', { enum: bf6PlayerStatus }).notNull().default('active'),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
