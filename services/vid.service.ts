@@ -28,6 +28,7 @@ type SentMessageLike = {
 export type VidSourceInfo = {
     isTwitterLike: boolean;
     isRedditLike: boolean;
+    isInstagramLike: boolean;
 };
 
 export type RedditVideoResult =
@@ -42,8 +43,12 @@ export type VidProgressMessage = {
 const DEFAULT_DISCORD_UPLOAD_LIMIT_BYTES = 10 * 1024 * 1024;
 const DISCORD_UPLOAD_HEADROOM_BYTES = 512 * 1024;
 const ffmpegBinary = ffmpegPath as unknown as string | null;
-const ytdlpBinary = path.resolve(process.cwd(), "yt-dlp");
-const cookiesFile = path.resolve(process.cwd(), "cookies.txt");
+const ytdlpBinary = process.env.YTDLP_BINARY_PATH
+    ? path.resolve(process.cwd(), process.env.YTDLP_BINARY_PATH)
+    : path.resolve(process.cwd(), "yt-dlp");
+const cookiesFile = process.env.YTDLP_COOKIES_PATH
+    ? path.resolve(process.cwd(), process.env.YTDLP_COOKIES_PATH)
+    : path.resolve(process.cwd(), "cookies.txt");
 const browserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 const formatMb = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -171,13 +176,18 @@ const addCommonYtDlpArgs = async (cmd: string[]) => {
     cmd.push("--user-agent", browserUserAgent);
     try {
         await fs.access(cookiesFile);
-        cmd.push("--cookies", cookiesFile);
+        const tempCookiesFile = path.resolve(process.cwd(), "temp", `cookies-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.txt`);
+        await fs.mkdir(path.dirname(tempCookiesFile), { recursive: true });
+        await fs.copyFile(cookiesFile, tempCookiesFile);
+        cmd.push("--cookies", tempCookiesFile);
+        return tempCookiesFile;
     } catch {
         const browserName = process.env.YTDLP_COOKIES_FROM_BROWSER;
         if (browserName) {
             cmd.push("--cookies-from-browser", browserName);
         }
     }
+    return undefined;
 };
 
 const runYtDlpGetUrl = async (url: string, attempt: YtDlpAttempt = {}) => {
@@ -188,7 +198,7 @@ const runYtDlpGetUrl = async (url: string, attempt: YtDlpAttempt = {}) => {
         "--extractor-retries", "3",
     ];
 
-    await addCommonYtDlpArgs(cmd);
+    const tempCookiesFile = await addCommonYtDlpArgs(cmd);
 
     if (attempt.format) {
         cmd.push("-f", attempt.format);
@@ -200,7 +210,13 @@ const runYtDlpGetUrl = async (url: string, attempt: YtDlpAttempt = {}) => {
 
     cmd.push(url);
 
-    return runCommand(cmd);
+    try {
+        return await runCommand(cmd);
+    } finally {
+        if (tempCookiesFile) {
+            await fs.unlink(tempCookiesFile).catch(() => {});
+        }
+    }
 };
 
 const runYtDlpDownload = async (url: string, outputTemplate: string) => {
@@ -213,7 +229,7 @@ const runYtDlpDownload = async (url: string, outputTemplate: string) => {
         "-o", outputTemplate,
     ];
 
-    await addCommonYtDlpArgs(cmd);
+    const tempCookiesFile = await addCommonYtDlpArgs(cmd);
 
     if (ffmpegBinary) {
         cmd.push("--ffmpeg-location", ffmpegBinary);
@@ -221,7 +237,13 @@ const runYtDlpDownload = async (url: string, outputTemplate: string) => {
 
     cmd.push(url);
 
-    return runCommand(cmd);
+    try {
+        return await runCommand(cmd);
+    } finally {
+        if (tempCookiesFile) {
+            await fs.unlink(tempCookiesFile).catch(() => {});
+        }
+    }
 };
 
 const findDownloadedFile = async (directory: string, prefix: string) => {
@@ -295,7 +317,7 @@ const getShorterUrlIfAvailable = async (url: string) => {
 
 
 
-const buildAttempts = ({ isTwitterLike, isRedditLike }: VidSourceInfo) => {
+const buildAttempts = ({ isTwitterLike, isRedditLike, isInstagramLike }: VidSourceInfo) => {
     const defaultAttempts: YtDlpAttempt[] = [
         { format: "b" },
         { format: "best" },
@@ -310,8 +332,20 @@ const buildAttempts = ({ isTwitterLike, isRedditLike }: VidSourceInfo) => {
         { format: "best" },
         {},
     ];
+    const instagramAttempts: YtDlpAttempt[] = [
+        { format: "b", extractorArg: "instagram:app_id=web" },
+        { format: "b", extractorArg: "instagram:app_id=ios" },
+        { format: "best", extractorArg: "instagram:app_id=web" },
+        { format: "best", extractorArg: "instagram:app_id=ios" },
+        ...defaultAttempts,
+    ];
 
     const twitterExtractorArgs = [undefined, "twitter:api=legacy", "twitter:api=syndication"];
+
+    if (isInstagramLike) {
+        return instagramAttempts;
+    }
+
     const baseAttempts = isRedditLike ? redditAttempts : defaultAttempts;
 
     if (!isTwitterLike) {
@@ -334,6 +368,8 @@ export const getVidSourceInfo = (url: string): VidSourceInfo => {
         isTwitterLike: host.includes("twitter.com") || host.includes("x.com"),
         isRedditLike:
             host.includes("reddit.com") || host.includes("redd.it") || host.includes("v.redd.it"),
+        isInstagramLike:
+            host.includes("instagram.com") || host.includes("instagr.am"),
     };
 };
 
