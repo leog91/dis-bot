@@ -8,11 +8,10 @@
     "dev": "bun --watch index.ts",
     "dev-logging": "bun run prepare-logs && bun run dev >> logs/log-$(date +%Y-%m-%d).txt 2>&1",
     "dev-logging-watch": "bun run dev-logging & tail -f logs/log-$(date +%Y-%m-%d).txt",
-    "sync-private-assets": "bash scripts/sync-private-assets.sh",
     "db:migrate": "bunx drizzle-kit migrate",
     "typecheck": "bunx --bun tsc -p tsconfig.private.json",
     "typecheck:private": "bunx --bun tsc -p tsconfig.private.json",
-    "start": "node index.js",
+    "start": "bun index.ts",
     "test": "bun test"
   },
   "keywords": [],
