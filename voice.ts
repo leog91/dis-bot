@@ -16,7 +16,7 @@ import {
 } from "@discordjs/voice";
 import fetch from "node-fetch";
 import { Message, Guild } from "discord.js";
-import { join, dirname, basename, isAbsolute } from "path";
+import { join, dirname, basename, isAbsolute, resolve, relative } from "path";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -38,6 +38,14 @@ const getAudioRoots = (): string[] => {
     return roots;
 };
 
+const isPathInside = (candidate: string, root: string): boolean => {
+    const relativePath = relative(resolve(root), resolve(candidate));
+    return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+};
+
+const isPathInAudioRoots = (candidate: string): boolean =>
+    getAudioRoots().some((root) => isPathInside(candidate, root));
+
 const formatAudioPathForLog = (filePath: string): string => {
     for (const root of getAudioRoots()) {
         const prefix = root.endsWith("/") ? root : `${root}/`;
@@ -52,6 +60,7 @@ const listAudioFiles = (folderRel: string): string[] => {
     const files: string[] = [];
     for (const root of getAudioRoots()) {
         const folderPath = join(root, folderRel);
+        if (!isPathInside(folderPath, root)) continue;
         if (!fs.existsSync(folderPath)) continue;
         const entries = fs.readdirSync(folderPath, { withFileTypes: true });
         for (const entry of entries) {
@@ -100,7 +109,7 @@ const findByBasename = (name: string): string | null => {
 const resolveAudioPath = (input: string): string | null => {
     const normalized = input.replace(/\\/g, "/").trim();
 
-    if (isAbsolute(normalized) && fs.existsSync(normalized)) {
+    if (isAbsolute(normalized) && fs.existsSync(normalized) && isPathInAudioRoots(normalized)) {
         return normalized;
     }
 
@@ -108,7 +117,7 @@ const resolveAudioPath = (input: string): string | null => {
         for (const root of getAudioRoots()) {
             if (hasExtension(normalized)) {
                 const direct = join(root, normalized);
-                if (fs.existsSync(direct)) return direct;
+                if (isPathInside(direct, root) && fs.existsSync(direct)) return direct;
                 continue;
             }
 
@@ -116,7 +125,9 @@ const resolveAudioPath = (input: string): string | null => {
                 join(root, `${normalized}${ext}`)
             );
 
-            const found = candidates.find((candidate) => fs.existsSync(candidate));
+            const found = candidates.find((candidate) =>
+                isPathInside(candidate, root) && fs.existsSync(candidate)
+            );
             if (found) return found;
         }
     } else {
@@ -125,7 +136,7 @@ const resolveAudioPath = (input: string): string | null => {
                 ? join(root, normalized)
                 : join(root, `${normalized}.mp3`);
 
-            if (fs.existsSync(directCandidate)) return directCandidate;
+            if (isPathInside(directCandidate, root) && fs.existsSync(directCandidate)) return directCandidate;
         }
     }
 
@@ -151,6 +162,12 @@ export class GuildVoiceManager {
         this.guildId = guildId;
     }
 
+    private clearCurrentTempFile() {
+        if (!this.currentTempFile) return;
+        fs.unlink(this.currentTempFile, () => {});
+        this.currentTempFile = null;
+    }
+
 
     // Ensure connection + player exist for a specific channel
     async ensureConnection(channelId: string, adapterCreator: any): Promise<AudioPlayer> {
@@ -165,10 +182,7 @@ export class GuildVoiceManager {
         if (!this.player) {
             this.player = createAudioPlayer();
             this.player.on(AudioPlayerStatus.Idle, () => {
-                if (this.currentTempFile) {
-                    fs.unlink(this.currentTempFile, () => {});
-                    this.currentTempFile = null;
-                }
+                this.clearCurrentTempFile();
                 if (this.queue.length > 0 && this.currentMsg) {
                     const nextFile = this.queue.shift()!;
                     this.playResource(nextFile);
@@ -176,10 +190,7 @@ export class GuildVoiceManager {
             });
             this.player.on("error", (err) => {
                 console.error("Audio player error:", err);
-                if (this.currentTempFile) {
-                    fs.unlink(this.currentTempFile, () => {});
-                    this.currentTempFile = null;
-                }
+                this.clearCurrentTempFile();
                 if (this.currentMsg) {
                     this.currentMsg.reply("⚠️ Audio playback error.");
                 }
@@ -204,6 +215,7 @@ export class GuildVoiceManager {
 
     private playResource(filePath: string) {
         if (!this.player) return;
+        this.clearCurrentTempFile();
         const inputType = filePath.endsWith(".ogg")
             ? StreamType.OggOpus
             : undefined;
@@ -273,6 +285,7 @@ export class GuildVoiceManager {
         // TTS interrupts any queued playback
         this.queue = [];
         this.currentMsg = msg;
+        this.clearCurrentTempFile();
         this.currentTempFile = tempFile;
         player.play(resource);
     }
@@ -297,6 +310,7 @@ export class GuildVoiceManager {
 
         this.queue = [];
         this.currentMsg = null;
+        this.clearCurrentTempFile();
         this.currentTempFile = tempFile;
         player.play(resource);
     }
@@ -332,6 +346,9 @@ export class GuildVoiceManager {
         this.connection.disconnect();
         this.connection = null;
         this.player = null;
+        this.queue = [];
+        this.currentMsg = null;
+        this.clearCurrentTempFile();
 
         if (msg instanceof Message) msg.reply("👋 Disconnected from voice.");
     }
