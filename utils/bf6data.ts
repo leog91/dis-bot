@@ -605,7 +605,6 @@ export async function getMonthlyHistory(): Promise<MonthlyRow[]> {
 
     for (let i = 0; i < sortedMonths.length; i++) {
         const month = sortedMonths[i];
-        const prevMonth = i > 0 ? sortedMonths[i - 1] : null;
         const isBaseline = i === 0;
 
         let totalKills = 0;
@@ -621,13 +620,23 @@ export async function getMonthlyHistory(): Promise<MonthlyRow[]> {
                 totalKills += curr.kills;
                 totalDeaths += curr.deaths;
                 totalTime += curr.timePlayedValue;
-            } else if (prevMonth) {
-                const prev = playerMonths.get(prevMonth);
-                if (prev) {
-                    totalKills += curr.kills - prev.kills;
-                    totalDeaths += curr.deaths - prev.deaths;
-                    totalTime += curr.timePlayedValue - prev.timePlayedValue;
-                }
+                continue;
+            }
+
+            const previousPlayerMonth = [...playerMonths.keys()]
+                .filter((playerMonth) => playerMonth < month)
+                .sort()
+                .at(-1);
+            const prev = previousPlayerMonth ? playerMonths.get(previousPlayerMonth) : null;
+
+            if (prev) {
+                totalKills += curr.kills - prev.kills;
+                totalDeaths += curr.deaths - prev.deaths;
+                totalTime += curr.timePlayedValue - prev.timePlayedValue;
+            } else {
+                totalKills += curr.kills;
+                totalDeaths += curr.deaths;
+                totalTime += curr.timePlayedValue;
             }
         }
 
