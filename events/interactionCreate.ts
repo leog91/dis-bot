@@ -19,6 +19,8 @@ type GuildData = {
 type CrashData = Record<string, GuildData>;
 
 const selectedUser = new Map<string, string>();
+const CRASH_USER_SELECT_ID = "crash_user_select";
+const CRASH_BUTTON_IDS = new Set(["crash_add", "crash_remove"]);
 
 function loadData(): CrashData {
     fs.mkdirSync(path.dirname(FILE), { recursive: true });
@@ -46,6 +48,13 @@ export default async function interactionCreate(interaction: Interaction) {
     if (!interaction.isMessageComponent()) return;
     if (!interaction.guild) return;
 
+    const isCrashUserSelect = interaction.componentType === ComponentType.UserSelect
+        && interaction.customId === CRASH_USER_SELECT_ID;
+    const isCrashButton = interaction.isButton()
+        && CRASH_BUTTON_IDS.has(interaction.customId);
+
+    if (!isCrashUserSelect && !isCrashButton) return;
+
     const data = loadData();
     if (!data[interaction.guild.id]) data[interaction.guild.id] = { users: {} };
     const guildData = data[interaction.guild.id];
@@ -53,7 +62,7 @@ export default async function interactionCreate(interaction: Interaction) {
     const server = interaction.guild?.name || "DM";
 
     // ------------------ USER SELECT ------------------
-    if (interaction.componentType === ComponentType.UserSelect) {
+    if (isCrashUserSelect) {
         const userId = interaction.values[0];
         selectedUser.set(interaction.message.id, userId);
 
