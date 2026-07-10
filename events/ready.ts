@@ -1,5 +1,7 @@
 import { Client } from "discord.js";
 import { bf6Service } from "../services/bf6.service";
+import { cacheGuildUploadLimit, formatUploadLimitMb } from "../services/guildUploadLimit.service";
+import { logger } from "../utils/logger";
 
 
 export default async function onReady(client: Client) {
@@ -14,7 +16,17 @@ export default async function onReady(client: Client) {
     });
 
     // Pre-fetch guilds to speed up later operations
-    client.guilds.fetch();
+    await client.guilds.fetch().catch((error) => {
+        console.error("Failed to fetch guilds:", error);
+    });
+
+    for (const guild of client.guilds.cache.values()) {
+        const uploadLimit = cacheGuildUploadLimit(guild);
+        logger(
+            guild.name,
+            `Boost level: ${uploadLimit.premiumTier}, boosts: ${uploadLimit.boostCount}, upload limit: ${formatUploadLimitMb(uploadLimit.uploadLimitBytes)}`
+        );
+    }
 
     console.log("✨ Bot is ready");
 

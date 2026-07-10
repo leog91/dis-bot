@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import type { Message, MessageCreateOptions } from "discord.js";
 import ffmpegPath from "ffmpeg-static";
+import { getGuildUploadLimitBytes } from "./guildUploadLimit.service";
 
 declare const Bun: any;
 
@@ -40,7 +41,6 @@ export type VidProgressMessage = {
     remove: () => Promise<void>;
 };
 
-const DEFAULT_DISCORD_UPLOAD_LIMIT_BYTES = 10 * 1024 * 1024;
 const DISCORD_UPLOAD_HEADROOM_BYTES = 512 * 1024;
 const ffmpegBinary = ffmpegPath as unknown as string | null;
 const ytdlpBinary = process.env.YTDLP_BINARY_PATH
@@ -94,8 +94,7 @@ const getSendChannel = (msg: Message) => msg.channel as MessageChannelLike;
 
 const toSentMessageLike = (value: unknown) => value as SentMessageLike;
 
-const getUploadLimitBytes = (msg: Message) =>
-    DEFAULT_DISCORD_UPLOAD_LIMIT_BYTES;
+const getUploadLimitBytes = (msg: Message) => getGuildUploadLimitBytes(msg.guild);
 
 const parseDurationSeconds = (ffmpegText: string) => {
     const match = ffmpegText.match(/Duration:\s+(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)/);
