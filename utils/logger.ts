@@ -9,7 +9,8 @@ export type LogType = "INFO" | "VOICE" | "MESSAGE" | "ERROR" | "BUTTON" | "SELEC
 
 export function logger(server: string, message: string, type: LogType = "INFO") {
     const timestamp = new Date().toISOString();
-    const line = `[${timestamp}] [${server}] [${type}] ${message}\n`;
+    const rssMb = Math.round(process.memoryUsage().rss / 1024 / 1024);
+    const line = `[${timestamp}] [${rssMb}MB] [${server}] [${type}] ${message}\n`;
 
     // Write to daily file
     const logFile = path.join(LOG_DIR, `${new Date().toISOString().slice(0, 10)}.log`);
