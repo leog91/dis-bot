@@ -1,6 +1,7 @@
 import { Message } from "discord.js";
 import { defineCommand } from "..";
 import fetch from "node-fetch";
+import sharp from "sharp";
 
 interface GeoResult {
     latitude: number;
@@ -108,8 +109,11 @@ export default defineCommand({
                 return { location, weather };
             });
 
-            await msg.reply(formatComparison(results));
-            await msg.reply(formatExtendedForecast(results));
+            const card = await renderWeatherCard(results);
+            await msg.reply({
+                content: "**Weather forecast**",
+                files: [{ attachment: card, name: "weather-forecast.png" }]
+            });
         } catch {
             await msg.reply("Failed to fetch weather data.");
         }
@@ -156,85 +160,79 @@ async function fetchWeatherBatch(locations: GeoResult[]): Promise<WeatherRespons
     return Array.isArray(data) ? data : [data];
 }
 
-function formatComparison(results: Array<CityWeather | { query: string; error: string }>): string {
-    const width = 19;
-    const headers = results.map(result => "location" in result
-        ? formatLocationHeader(result.location)
-        : result.query);
-    const values = results.map(result => "location" in result ? weatherValues(result.weather) : [result.error]);
-    const rows = [
-        ["Condition", ...values.map(value => value[0] ?? "-")],
-        ["Temperature", ...values.map(value => value[1] ?? "-")],
-        ["Feels like", ...values.map(value => value[2] ?? "-")],
-        ["Min / Max", ...values.map(value => value[3] ?? "-")],
-        ["Humidity", ...values.map(value => value[4] ?? "-")],
-        ["Wind", ...values.map(value => value[5] ?? "-")],
-        ["Rain chance", ...values.map(value => value[6] ?? "-")],
-        ["UV index", ...values.map(value => value[7] ?? "-")]
-    ];
-
-    const line = (cells: string[]) => cells.map(cell => truncate(cell, width).padEnd(width)).join(" | ");
-    return `**Weather comparison**\n${formatLocations(results)}\n\`\`\`\n${line(["", ...headers])}\n${"-".repeat((width + 3) * (headers.length + 1) - 3)}\n${rows.map(line).join("\n")}\n\`\`\``;
+async function renderWeatherCard(results: Array<CityWeather | { query: string; error: string }>): Promise<Buffer> {
+    const width = 1080;
+    const cardHeight = 230;
+    const height = 120 + results.length * cardHeight;
+    const cards = results.map((result, index) => renderCityCard(result, 92 + index * cardHeight)).join("");
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+        <defs><linearGradient id="background" x2="0" y2="1"><stop stop-color="#10213d"/><stop offset="1" stop-color="#07101f"/></linearGradient></defs>
+        <rect width="100%" height="100%" fill="url(#background)"/>
+        <text x="42" y="48" fill="#f8fafc" font-family="sans-serif" font-size="30" font-weight="700">10-Day Weather Forecast</text>
+        <text x="42" y="75" fill="#94a3b8" font-family="sans-serif" font-size="16">Temperature ranges in Celsius. Rain probability is shown below each day.</text>
+        ${cards}
+    </svg>`;
+    return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
-function weatherValues(weather: WeatherResponse): string[] {
-    const hourIndex = weather.hourly.time.findIndex(time => time.startsWith(weather.current_weather.time.slice(0, 13)));
-    const hourly = <T>(values: T[]) => hourIndex >= 0 ? values[hourIndex] : undefined;
-    const current = weather.current_weather;
-    return [
-        weatherIcon(current.weathercode),
-        `${current.temperature} C`,
-        `${hourly(weather.hourly.apparent_temperature) ?? "-"} C`,
-        `${weather.daily.temperature_2m_min[0]} / ${weather.daily.temperature_2m_max[0]} C`,
-        `${hourly(weather.hourly.relative_humidity_2m) ?? "-"}%`,
-        `${current.windspeed} km/h ${getWindDirection(current.winddirection)}`,
-        `${weather.daily.precipitation_probability_max[0] ?? "-"}%`,
-        `${hourly(weather.hourly.uv_index) ?? "-"} (max ${weather.daily.uv_index_max[0] ?? "-"})`
-    ];
+function renderCityCard(result: CityWeather | { query: string; error: string }, y: number): string {
+    if (!("location" in result)) {
+        return `<rect x="30" y="${y}" width="1020" height="200" rx="18" fill="#17243a"/>
+            <text x="58" y="${y + 82}" fill="#f8fafc" font-family="sans-serif" font-size="24" font-weight="700">${escapeXml(result.query)}</text>
+            <text x="58" y="${y + 120}" fill="#fca5a5" font-family="sans-serif" font-size="18">${escapeXml(result.error)}</text>`;
+    }
+
+    const { location, weather } = result;
+    const daily = weather.daily;
+    const currentHour = weather.hourly.time.findIndex(time => time.startsWith(weather.current_weather.time.slice(0, 13)));
+    const feelsLike = currentHour >= 0 ? weather.hourly.apparent_temperature[currentHour] : undefined;
+    const temperatures = [...daily.temperature_2m_min, ...daily.temperature_2m_max];
+    const floor = Math.floor(Math.min(...temperatures) - 2);
+    const ceiling = Math.ceil(Math.max(...temperatures) + 2);
+    const chartTop = y + 58;
+    const chartHeight = 92;
+    const chartX = 338;
+    const chartWidth = 675;
+    const scaleY = (temperature: number) => chartTop + ((ceiling - temperature) / (ceiling - floor || 1)) * chartHeight;
+    const points = daily.time.map((date, day) => {
+        const x = chartX + day * (chartWidth / 9);
+        const highY = scaleY(daily.temperature_2m_max[day]);
+        const lowY = scaleY(daily.temperature_2m_min[day]);
+        const label = formatDate(date);
+        return `<line x1="${x}" y1="${highY}" x2="${x}" y2="${lowY}" stroke="#60a5fa" stroke-width="12" stroke-linecap="round"/>
+            <text x="${x}" y="${highY - 10}" text-anchor="middle" fill="#e2e8f0" font-family="sans-serif" font-size="13">${daily.temperature_2m_max[day]}°</text>
+            <text x="${x}" y="${lowY + 24}" text-anchor="middle" fill="#cbd5e1" font-family="sans-serif" font-size="13">${daily.temperature_2m_min[day]}°</text>
+            <text x="${x}" y="${y + 177}" text-anchor="middle" fill="#94a3b8" font-family="sans-serif" font-size="12">${label}</text>
+            <text x="${x}" y="${y + 198}" text-anchor="middle" fill="#7dd3fc" font-family="sans-serif" font-size="12">${daily.precipitation_probability_max[day] ?? 0}% rain</text>`;
+    }).join("");
+
+    return `<rect x="30" y="${y}" width="1020" height="200" rx="18" fill="#17243a" stroke="#263a57"/>
+        <text x="58" y="${y + 38}" fill="#f8fafc" font-family="sans-serif" font-size="23" font-weight="700">${escapeXml(formatLocationHeader(location))}</text>
+        <text x="58" y="${y + 70}" fill="#93c5fd" font-family="sans-serif" font-size="34" font-weight="700">${weather.current_weather.temperature}°</text>
+        <text x="58" y="${y + 99}" fill="#cbd5e1" font-family="sans-serif" font-size="15">${escapeXml(weatherLabel(weather.current_weather.weathercode))}</text>
+        <text x="58" y="${y + 130}" fill="#94a3b8" font-family="sans-serif" font-size="14">Feels ${feelsLike ?? "-"}°  •  Wind ${weather.current_weather.windspeed} km/h ${getWindDirection(weather.current_weather.winddirection)}</text>
+        <text x="58" y="${y + 155}" fill="#94a3b8" font-family="sans-serif" font-size="14">Humidity ${currentHour >= 0 ? weather.hourly.relative_humidity_2m[currentHour] : "-"}%  •  UV ${currentHour >= 0 ? weather.hourly.uv_index[currentHour] : "-"}</text>
+        <text x="${chartX}" y="${y + 38}" fill="#94a3b8" font-family="sans-serif" font-size="13">DAILY LOW / HIGH</text>
+        ${points}`;
 }
 
-function formatExtendedForecast(results: Array<CityWeather | { query: string; error: string }>): string {
-    const dateWidth = 11;
-    const cityWidth = 25;
-    const headers = results.map(result => "location" in result
-        ? formatLocationHeader(result.location)
-        : result.query);
-    const days = Array.from({ length: 10 }, (_, index) => index);
-    const line = (date: string, cells: string[]) => [date.padEnd(dateWidth), ...cells.map(cell => truncate(cell, cityWidth).padEnd(cityWidth))].join(" | ");
-    const separator = "-".repeat(dateWidth + (cityWidth + 3) * headers.length);
-    const rows = days.map(day => line(formatDate(results, day), results.map(result => {
-        if (!("location" in result)) return result.error;
-        const daily = result.weather.daily;
-        const condition = weatherIcon(daily.weathercode[day]);
-        const min = daily.temperature_2m_min[day];
-        const max = daily.temperature_2m_max[day];
-        const rainChance = daily.precipitation_probability_max[day];
-        return `${condition} ${min}/${max} ${rainChance}%`;
-    })));
-
-    return `**10-Day Forecast** (condition, low/high C, rain chance)\n${formatLocations(results)}\n\`\`\`\n${line("Date", headers)}\n${separator}\n${rows.join("\n")}\n\`\`\``;
+function formatDate(date: string): string {
+    const value = new Date(`${date}T00:00:00`);
+    return `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][value.getDay()]} ${value.getDate()}`;
 }
 
-function formatDate(results: Array<CityWeather | { query: string; error: string }>, day: number): string {
-    const weather = results.find((result): result is CityWeather => "location" in result)?.weather;
-    if (!weather?.daily.time[day]) return `Day ${day + 1}`;
-    const date = new Date(`${weather.daily.time[day]}T00:00:00`);
-    return `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()]} ${date.getDate()}`;
-}
-
-function weatherIcon(code: number): string {
-    if (code === 0) return "☀️";
-    if (code === 1 || code === 2) return "🌤️";
-    if (code === 3) return "☁️";
-    if (code === 45 || code === 48) return "🌫️";
-    if (code >= 51 && code <= 55) return "🌦️";
-    if (code >= 61 && code <= 65) return "🌧️";
-    if (code >= 71 && code <= 77) return "❄️";
-    if (code >= 80 && code <= 82) return "🌧️";
-    if (code >= 85 && code <= 86) return "🌨️";
-    if (code === 95) return "⛈️";
-    if (code === 96 || code === 99) return "🌩️";
-    return "❔";
+function weatherLabel(code: number): string {
+    if (code === 0) return "Clear sky";
+    if (code === 1 || code === 2) return "Partly cloudy";
+    if (code === 3) return "Overcast";
+    if (code === 45 || code === 48) return "Fog";
+    if (code >= 51 && code <= 57) return "Drizzle";
+    if (code >= 61 && code <= 67) return "Rain";
+    if (code >= 71 && code <= 77) return "Snow";
+    if (code >= 80 && code <= 82) return "Rain showers";
+    if (code >= 85 && code <= 86) return "Snow showers";
+    if (code >= 95) return "Thunderstorm";
+    return "Unknown conditions";
 }
 
 function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string): T | undefined {
@@ -265,25 +263,16 @@ function formatLocationHeader(location: GeoResult): string {
     return `${location.name}, ${location.country_code}`;
 }
 
-function formatLocations(results: Array<CityWeather | { query: string; error: string }>): string {
-    const locations = results
-        .filter((result): result is CityWeather => "location" in result)
-        .map(({ location }) => `${formatLocationHeader(location)} ${getFlag(location.country_code)}`);
-    return locations.length > 0 ? `**Locations:** ${locations.join(" | ")}` : "";
-}
-
-function getFlag(countryCode: string): string {
-    return countryCode
-        .toUpperCase()
-        .split("")
-        .map(character => String.fromCodePoint(character.charCodeAt(0) - 0x41 + 0x1F1E6))
-        .join("");
-}
-
 function getWindDirection(degrees: number): string {
     return ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(degrees / 45) % 8];
 }
 
-function truncate(value: string, width: number): string {
-    return value.length > width ? `${value.slice(0, width - 3)}...` : value;
+function escapeXml(value: string): string {
+    return value.replace(/[&<>"']/g, character => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&apos;"
+    })[character] ?? character);
 }

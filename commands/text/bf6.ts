@@ -63,7 +63,7 @@ const HANDLERS: Record<SubCommand, (msg: Message, args: string[], reply: (conten
     history: (m, a, r) => historyHandler("history", m, a, r),
     refresh: (m, a, r) => refreshHandler("refresh", m, a, r),
     bans: async (_msg, _args, reply) => {
-        await reply("pablocc74 - 1 ban");
+        await reply("pablocc74 - 2 bans");
     },
 };
 
