@@ -2,6 +2,7 @@ import { defineCommand } from "..";
 import { Message, TextChannel } from "discord.js";
 import {
     SUBCOMMANDS_LIST,
+    isVehicleSubcommand,
     resolveSubcommand,
     type SubCommand,
 } from "../../utils/bf6commands/constants";
@@ -34,7 +35,7 @@ async function safeReply(msg: Message, content: string): Promise<Message | void>
     }
 }
 
-const HANDLERS: Record<SubCommand, (msg: Message, args: string[], reply: (content: string) => Promise<Message | void>) => Promise<void>> = {
+const HANDLERS: Partial<Record<SubCommand, (msg: Message, args: string[], reply: (content: string) => Promise<Message | void>) => Promise<void>>> = {
     kills: (m, a, r) => leaderboardHandler("kills", m, a, r),
     deaths: (m, a, r) => leaderboardHandler("deaths", m, a, r),
     revives: (m, a, r) => leaderboardHandler("revives", m, a, r),
@@ -50,11 +51,6 @@ const HANDLERS: Record<SubCommand, (msg: Message, args: string[], reply: (conten
     knife: (m, a, r) => itemsHandler("knife", m, a, r),
     frag: (m, a, r) => itemsHandler("frag", m, a, r),
     sledgehammer: (m, a, r) => itemsHandler("sledgehammer", m, a, r),
-    mbt: (m, a, r) => itemsHandler("mbt", m, a, r),
-    ifv: (m, a, r) => itemsHandler("ifv", m, a, r),
-    vehicles: (m, a, r) => itemsHandler("vehicles", m, a, r),
-    helicopter: (m, a, r) => itemsHandler("helicopter", m, a, r),
-    planes: (m, a, r) => itemsHandler("planes", m, a, r),
     class: (m, a, r) => classesHandler("class", m, a, r),
     assault: (m, a, r) => classesHandler("assault", m, a, r),
     engineer: (m, a, r) => classesHandler("engineer", m, a, r),
@@ -90,7 +86,9 @@ export default defineCommand({
         }
 
         try {
-            const handler = HANDLERS[sub];
+            const handler = HANDLERS[sub] ?? (isVehicleSubcommand(sub)
+                ? (m: Message, a: string[], r: (content: string) => Promise<Message | void>) => itemsHandler(sub, m, a, r)
+                : undefined);
             if (!handler) {
                 await safeReply(msg, `Unknown subcommand. Available: ${SUBCOMMANDS_LIST}`);
                 return;

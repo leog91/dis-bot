@@ -339,6 +339,53 @@ describe("extractItemSnapshots", () => {
             timePlayedDisplay: "1m 30s",
         });
     });
+
+    it("tracks exact vehicles and aggregates their vehicle types", () => {
+        const payload = {
+            data: {
+                segments: [
+                    {
+                        type: "vehicle",
+                        attributes: { key: "veh_air_uh06" },
+                        metadata: { category: "veh_air_ath", name: "UH-06" },
+                        stats: {
+                            kills: { value: 34 },
+                            timePlayed: { value: 6136 },
+                        },
+                    },
+                    {
+                        type: "vehicle",
+                        attributes: { key: "veh_air_ah6litbird" },
+                        metadata: { category: "veh_air_aah", name: "AH-6 Little Bird" },
+                        stats: {
+                            kills: { value: 12 },
+                            timePlayed: { value: 1800 },
+                        },
+                    },
+                    {
+                        type: "vehicle",
+                        attributes: { key: "veh_sur_m1a2sepv3" },
+                        metadata: { category: "veh_sur_smbt", name: "M1A2 SEPv3" },
+                        stats: {
+                            kills: { value: 8 },
+                            timePlayed: { value: 900 },
+                        },
+                    },
+                ],
+            },
+        };
+
+        const result = extractItemSnapshots("player-1", payload);
+        const snapshot = (key: string) => result.find((item) => item.itemKey === key);
+
+        expect(snapshot("transheli")).toMatchObject({ kills: 34, timePlayedValue: 6136 });
+        expect(snapshot("littlebird")).toMatchObject({ kills: 12, timePlayedValue: 1800 });
+        expect(snapshot("attackheli")).toMatchObject({ kills: 12, timePlayedValue: 1800 });
+        expect(snapshot("helicopter")).toMatchObject({ kills: 46, timePlayedValue: 7936 });
+        expect(snapshot("m1a2")).toMatchObject({ kills: 8, timePlayedValue: 900 });
+        expect(snapshot("mbt")).toMatchObject({ kills: 8, timePlayedValue: 900 });
+        expect(snapshot("vehicles")).toMatchObject({ kills: 54, timePlayedValue: 8836 });
+    });
 });
 
 describe("extractClassSnapshots", () => {

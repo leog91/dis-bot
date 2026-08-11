@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6WeaponPlaystyles, bf6ClassSnapshots } from "../db/schema";
 import { eq } from "drizzle-orm";
 import type { BF6PlayerStatus } from "../db/schema";
+import { BF6_VEHICLES, vehicleSegmentMatches, type BF6VehicleSnapshotKey } from "./bf6vehicles";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -72,11 +73,7 @@ export type BF6ItemSnapshotKey =
     | "knife"
     | "frag"
     | "sledgehammer"
-    | "mbt"
-    | "ifv"
-    | "vehicles"
-    | "helicopter"
-    | "planes";
+    | BF6VehicleSnapshotKey;
 
 export type BF6ItemSnapshot = {
     playerId: string;
@@ -189,11 +186,7 @@ const itemSnapshotKeys: BF6ItemSnapshotKey[] = [
     "knife",
     "frag",
     "sledgehammer",
-    "mbt",
-    "ifv",
-    "vehicles",
-    "helicopter",
-    "planes",
+    ...BF6_VEHICLES.map((vehicle) => vehicle.key),
 ];
 
 function segmentMatchesItem(segment: any, item: BF6ItemSnapshotKey): boolean {
@@ -202,7 +195,6 @@ function segmentMatchesItem(segment: any, item: BF6ItemSnapshotKey): boolean {
     const name = String(segment?.metadata?.name ?? "").toLowerCase();
     const subcategory = String(segment?.metadata?.subcategoryName ?? "").toLowerCase();
     const categoryName = String(segment?.metadata?.categoryName ?? "").toLowerCase();
-    const vehicleCategory = String(segment?.metadata?.category ?? "").toLowerCase();
 
     switch (item) {
         case "rpg":
@@ -236,43 +228,8 @@ function segmentMatchesItem(segment: any, item: BF6ItemSnapshotKey): boolean {
                 name.includes("sledgehammer") ||
                 key.includes("melee_heavy_sledge")
             );
-        case "mbt":
-            return (
-                type === "vehicle" &&
-                (
-                    vehicleCategory.includes("smbt") ||
-                    categoryName.includes("main battle tank") ||
-                    name.includes("leo 2a4") ||
-                    name.includes("m1a2")
-                )
-            );
-        case "ifv":
-            return (
-                type === "vehicle" &&
-                (
-                    vehicleCategory.includes("sifv") ||
-                    categoryName.includes("infantry fighting vehicle") ||
-                    name.includes("strf") ||
-                    name.includes("m3a3")
-                )
-            );
-        case "vehicles":
-            return type === "vehicle";
-        case "helicopter":
-            return type === "vehicle" && (vehicleCategory.includes("aah") || vehicleCategory.includes("ath") || categoryName.includes("helicopter"));
-        case "planes":
-            return (
-                type === "vehicle" &&
-                (
-                    vehicleCategory.includes("afj") ||
-                    vehicleCategory.includes("aab") ||
-                    categoryName.includes("jet") ||
-                    categoryName.includes("bomber") ||
-                    categoryName.includes("plane")
-                )
-            );
         default:
-            return false;
+            return vehicleSegmentMatches(segment, item as BF6VehicleSnapshotKey);
     }
 }
 
