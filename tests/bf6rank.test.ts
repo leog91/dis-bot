@@ -302,6 +302,7 @@ describe("extractItemSnapshots", () => {
                     },
                     {
                         type: "gadget",
+                        attributes: { key: "melee_heavy_sledge" },
                         metadata: { name: "Sledgehammer" },
                         stats: {
                             kills: { value: 4 },
@@ -317,12 +318,14 @@ describe("extractItemSnapshots", () => {
         const mbt = result.find((item) => item.itemKey === "mbt");
         const vehicles = result.find((item) => item.itemKey === "vehicles");
         const sledgehammer = result.find((item) => item.itemKey === "sledgehammer");
+        const combatGadgets = result.find((item) => item.itemKey === "combatgadgets");
+        const melee = result.find((item) => item.itemKey === "melee");
 
         expect(c4).toMatchObject({
             playerId: "player-1",
-            kills: 5,
-            timePlayedValue: 120,
-            timePlayedDisplay: "2m 0s",
+            kills: 3,
+            timePlayedValue: 75,
+            timePlayedDisplay: "1m 15s",
         });
         expect(mbt).toMatchObject({
             kills: 7,
@@ -338,6 +341,8 @@ describe("extractItemSnapshots", () => {
             timePlayedValue: 90,
             timePlayedDisplay: "1m 30s",
         });
+        expect(combatGadgets).toMatchObject({ kills: 7, timePlayedValue: 165 });
+        expect(melee).toMatchObject({ kills: 4, timePlayedValue: 90 });
     });
 
     it("tracks exact vehicles and aggregates their vehicle types", () => {

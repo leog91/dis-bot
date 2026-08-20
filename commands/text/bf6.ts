@@ -1,7 +1,8 @@
 import { defineCommand } from "..";
 import { Message, TextChannel } from "discord.js";
 import {
-    SUBCOMMANDS_LIST,
+    SUBCOMMANDS_HELP,
+    isGadgetSubcommand,
     isVehicleSubcommand,
     resolveSubcommand,
     type SubCommand,
@@ -79,18 +80,18 @@ export default defineCommand({
         if (!sub) {
             const hasInput = Boolean(rawSub?.trim());
             const msgText = hasInput
-                ? `Unknown subcommand. Available: ${SUBCOMMANDS_LIST}`
-                : "Te falta el subcommand máquina:\n" + SUBCOMMANDS_LIST;
+                ? `Unknown subcommand. Available:\n\n${SUBCOMMANDS_HELP}`
+                : `Te falta el subcommand máquina:\n\n${SUBCOMMANDS_HELP}`;
             await safeReply(msg, msgText);
             return;
         }
 
         try {
-            const handler = HANDLERS[sub] ?? (isVehicleSubcommand(sub)
+            const handler = HANDLERS[sub] ?? (isGadgetSubcommand(sub) || isVehicleSubcommand(sub)
                 ? (m: Message, a: string[], r: (content: string) => Promise<Message | void>) => itemsHandler(sub, m, a, r)
                 : undefined);
             if (!handler) {
-                await safeReply(msg, `Unknown subcommand. Available: ${SUBCOMMANDS_LIST}`);
+                await safeReply(msg, `Unknown subcommand. Available:\n\n${SUBCOMMANDS_HELP}`);
                 return;
             }
             await handler(msg, args, (content) => safeReply(msg, content));

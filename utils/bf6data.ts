@@ -2,22 +2,14 @@ import { db } from "../db/index";
 import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6WeaponPlaystyles, bf6ClassSnapshots, type BF6PlayerStatus } from "../db/schema";
 import { desc, eq, sql, and, lt, gt, lte, gte } from "drizzle-orm";
 import { PlayerRank, updateBf6Data } from "./bf6rank";
+import type { BF6GadgetSnapshotKey } from "./bf6gadgets";
 import type { BF6VehicleSnapshotKey } from "./bf6vehicles";
 
 // ================= CONFIG =================
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
 // ==========================================
 
-export type BF6ItemLeaderboardKey =
-    | "rpg"
-    | "c4"
-    | "mines"
-    | "m15"
-    | "m18a1"
-    | "knife"
-    | "frag"
-    | "sledgehammer"
-    | BF6VehicleSnapshotKey;
+export type BF6ItemLeaderboardKey = BF6GadgetSnapshotKey | BF6VehicleSnapshotKey;
 
 export type BF6ItemSortKey = "kills" | "timePlayed";
 

@@ -2,6 +2,14 @@ import { Message } from "discord.js";
 import { users } from "../../../dis-bot-assets-private/utils/constants";
 import { BF6ItemLeaderboardKey } from "../bf6data";
 import {
+    BF6_GADGETS,
+    BF6_GADGET_BY_COMMAND,
+    BF6_GADGET_COMMANDS,
+    resolveGadgetCommand,
+    type BF6GadgetCommand,
+    type BF6GadgetSnapshotKey,
+} from "../bf6gadgets";
+import {
     BF6_VEHICLES,
     BF6_VEHICLE_BY_COMMAND,
     BF6_VEHICLE_COMMANDS,
@@ -33,13 +41,7 @@ export const SUBCOMMANDS = [
     "bans",
     "refresh",
     "trackergg",
-    "rpg",
-    "c4",
-    "mine",
-    "claymore",
-    "knife",
-    "frag",
-    "sledgehammer",
+    ...BF6_GADGET_COMMANDS,
     ...BF6_VEHICLE_COMMANDS,
     "class",
     "assault",
@@ -50,13 +52,25 @@ export const SUBCOMMANDS = [
 ] as const;
 
 export type SubCommand = typeof SUBCOMMANDS[number];
-export const SUBCOMMANDS_LIST = SUBCOMMANDS.join(", ");
+
+const SUBCOMMAND_HELP_CATEGORIES: readonly { title: string; commands: readonly SubCommand[] }[] = [
+    { title: "Stats", commands: ["kills", "deaths", "revives", "score", "rank", "timePlayed", "playStyle", "history"] },
+    { title: "Combat Gadget Groups", commands: ["combatgadgets", "launchers", "mines", "grenades", "melee"] },
+    { title: "Launchers", commands: ["m320he", "m320thrm", "sichg1wp", "rpg", "mas148", "spire", "m136at", "igla"] },
+    { title: "Explosives & Grenades", commands: ["ptkm1r", "mine", "claymore", "slam", "c4", "frag", "incendiary"] },
+    { title: "Special & Melee", commands: ["throwingknife", "hti", "knife", "sledgehammer", "iceaxe", "machete", "eodarm"] },
+    { title: "Vehicle Groups", commands: ["vehicles", "helicopter", "planes", "attackheli", "transheli", "bomber", "fighterjet", "mbt", "ifv", "mobileaa", "lighttransport", "transport", "dirtbike"] },
+    { title: "Aircraft", commands: ["falchion", "f61v", "kestrel", "panthera", "f39e", "su57", "seacat", "superspectre", "littlebird"] },
+    { title: "Ground & Naval", commands: ["glider96", "m1a2", "strf09", "leo2a4", "cheetah", "bradley", "royalptv", "rugged", "traverser", "rhib", "vector", "tm450", "m1030", "ltv", "rcb90"] },
+    { title: "Classes", commands: ["class", "assault", "engineer", "support", "recon"] },
+    { title: "Other", commands: ["trackergg", "refresh", "bans"] },
+];
+
+export const SUBCOMMANDS_HELP = SUBCOMMAND_HELP_CATEGORIES
+    .map(({ title, commands }) => `**${title}**\n${commands.map((command) => `\`${command}\``).join(", ")}`)
+    .join("\n\n");
 
 export const SUBCOMMAND_ALIASES: Partial<Record<SubCommand, string[]>> = {
-    claymore: ["m18", "m18a1"],
-    c4: ["c-4", "c4"],
-    mine: ["m15", "mines"],
-    sledgehammer: ["sledge", "hammer"],
     timePlayed: ["time", "playtime", "hours"],
     trackergg: ["tracker", "tg", "nicks", "nick"],
     assault: ["aslt"],
@@ -70,6 +84,9 @@ export const SUBCOMMAND_ALIASES: Partial<Record<SubCommand, string[]>> = {
 export function resolveSubcommand(raw: string | undefined): SubCommand | null {
     const normalized = raw?.trim().toLowerCase();
     if (!normalized) return null;
+
+    const gadgetCommand = resolveGadgetCommand(normalized);
+    if (gadgetCommand) return gadgetCommand;
 
     const vehicleCommand = resolveVehicleCommand(normalized);
     if (vehicleCommand) return vehicleCommand;
@@ -88,28 +105,19 @@ export function resolveSubcommand(raw: string | undefined): SubCommand | null {
 }
 
 export const itemSubcommands: Record<string, BF6ItemLeaderboardKey> = {
-    rpg: "rpg",
-    c4: "c4",
-    mine: "m15",
-    claymore: "m18a1",
-    knife: "knife",
-    frag: "frag",
-    sledgehammer: "sledgehammer",
+    ...Object.fromEntries(BF6_GADGETS.map((gadget) => [gadget.command, gadget.key])),
     ...Object.fromEntries(BF6_VEHICLES.map((vehicle) => [vehicle.command, vehicle.key])),
 };
 
 export const itemTitles: Record<BF6ItemLeaderboardKey, string> = {
-    rpg: "RPG",
-    c4: "C-4 Explosive",
-    mines: "Mines",
-    m15: "M15 Mine",
-    m18a1: "Claymore (M18A1)",
-    knife: "Combat Knife",
-    frag: "Frag Grenade",
-    sledgehammer: "Sledgehammer",
+    ...Object.fromEntries(BF6_GADGETS.map((gadget) => [gadget.key, gadget.title])) as Record<BF6GadgetSnapshotKey, string>,
     ...Object.fromEntries(BF6_VEHICLES.map((vehicle) => [vehicle.key, vehicle.title])) as Record<BF6VehicleCommand, string>,
 };
 
 export function isVehicleSubcommand(sub: SubCommand): sub is BF6VehicleCommand {
     return sub in BF6_VEHICLE_BY_COMMAND;
+}
+
+export function isGadgetSubcommand(sub: SubCommand): sub is BF6GadgetCommand {
+    return sub in BF6_GADGET_BY_COMMAND;
 }

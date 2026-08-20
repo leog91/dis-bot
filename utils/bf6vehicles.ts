@@ -30,6 +30,8 @@ export const BF6_VEHICLES = [
     { key: "panthera", command: "panthera", aliases: ["pantherakht"], title: "Panthera KHT", exactKeys: ["veh_air_panthera"] },
     { key: "f39e", command: "f39e", aliases: ["f-39e"], title: "F-39E", exactKeys: ["veh_air_f39e"] },
     { key: "su57", command: "su57", aliases: ["su-57"], title: "Su-57", exactKeys: ["veh_air_su57"] },
+    { key: "seacat", command: "seacat", aliases: ["f74a", "f-74a", "f14", "f-14", "tomcat"], title: "F-74A Seacat", exactKeys: ["veh_air_f14tomcat"] },
+    { key: "superspectre", command: "superspectre", aliases: ["super-spectre", "fa81f", "f/a-81f", "fa18f", "f/a-18f"], title: "F/A-81F Super Spectre", exactKeys: ["veh_air_fa18f"] },
     { key: "littlebird", command: "littlebird", aliases: ["little-bird", "ah6", "ah-6"], title: "AH-6 Little Bird", exactKeys: ["veh_air_ah6litbird"] },
     { key: "glider96", command: "glider96", aliases: ["glider", "glider-96"], title: "Glider 96", exactKeys: ["veh_sur_glider96"] },
     { key: "m1a2", command: "m1a2", aliases: ["m1a2sepv3", "m1a2-sepv3"], title: "M1A2 SEPv3", exactKeys: ["veh_sur_m1a2sepv3"] },

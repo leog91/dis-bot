@@ -7,6 +7,8 @@ describe("BF6 vehicle catalog", () => {
         expect(resolveVehicleCommand("UH-06")).toBe("transheli");
         expect(resolveVehicleCommand("little-bird")).toBe("littlebird");
         expect(resolveVehicleCommand("M1A2-SEPv3")).toBe("m1a2");
+        expect(resolveVehicleCommand("F-74A")).toBe("seacat");
+        expect(resolveVehicleCommand("F/A-81F")).toBe("superspectre");
         expect(resolveVehicleCommand("not-a-vehicle")).toBeNull();
     });
 
@@ -15,8 +17,8 @@ describe("BF6 vehicle catalog", () => {
         const exactKeys = exactDefinitions.flatMap((vehicle) => vehicle.exactKeys);
         const transportHelicopter = BF6_VEHICLES.find((vehicle) => vehicle.key === "transheli");
 
-        expect(exactKeys).toHaveLength(22);
-        expect(new Set(exactKeys).size).toBe(22);
+        expect(exactKeys).toHaveLength(24);
+        expect(new Set(exactKeys).size).toBe(24);
         expect(transportHelicopter?.categories).toEqual(["veh_air_ath"]);
     });
 
@@ -32,5 +34,23 @@ describe("BF6 vehicle catalog", () => {
         expect(vehicleSegmentMatches(littleBird, "helicopter")).toBe(true);
         expect(vehicleSegmentMatches(littleBird, "transheli")).toBe(false);
         expect(vehicleSegmentMatches(littleBird, "vehicles")).toBe(true);
+    });
+
+    it("matches the Season 4 jets individually and as fighter jets", () => {
+        const seacat = {
+            type: "vehicle",
+            attributes: { key: "veh_air_f14tomcat" },
+            metadata: { category: "veh_air_afj" },
+        };
+        const superSpectre = {
+            type: "vehicle",
+            attributes: { key: "veh_air_fa18f" },
+            metadata: { category: "veh_air_afj" },
+        };
+
+        expect(vehicleSegmentMatches(seacat, "seacat")).toBe(true);
+        expect(vehicleSegmentMatches(superSpectre, "superspectre")).toBe(true);
+        expect(vehicleSegmentMatches(seacat, "fighterjet")).toBe(true);
+        expect(vehicleSegmentMatches(superSpectre, "planes")).toBe(true);
     });
 });

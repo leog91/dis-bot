@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6WeaponPlaystyles, bf6ClassSnapshots } from "../db/schema";
 import { eq } from "drizzle-orm";
 import type { BF6PlayerStatus } from "../db/schema";
+import { BF6_GADGETS, BF6_GADGET_BY_KEY, gadgetSegmentMatches, type BF6GadgetSnapshotKey } from "./bf6gadgets";
 import { BF6_VEHICLES, vehicleSegmentMatches, type BF6VehicleSnapshotKey } from "./bf6vehicles";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -64,16 +65,7 @@ export type WeaponPlaystyleSnapshot = {
     accuracyPct: number; // basis points (x100)
 };
 
-export type BF6ItemSnapshotKey =
-    | "rpg"
-    | "c4"
-    | "mines"
-    | "m15"
-    | "m18a1"
-    | "knife"
-    | "frag"
-    | "sledgehammer"
-    | BF6VehicleSnapshotKey;
+export type BF6ItemSnapshotKey = BF6GadgetSnapshotKey | BF6VehicleSnapshotKey;
 
 export type BF6ItemSnapshot = {
     playerId: string;
@@ -178,59 +170,15 @@ export function formatDuration(seconds: number): string {
 }
 
 const itemSnapshotKeys: BF6ItemSnapshotKey[] = [
-    "rpg",
-    "c4",
-    "mines",
-    "m15",
-    "m18a1",
-    "knife",
-    "frag",
-    "sledgehammer",
+    ...BF6_GADGETS.map((gadget) => gadget.key),
     ...BF6_VEHICLES.map((vehicle) => vehicle.key),
 ];
 
 function segmentMatchesItem(segment: any, item: BF6ItemSnapshotKey): boolean {
-    const type = String(segment?.type ?? "").toLowerCase();
-    const key = String(segment?.attributes?.key ?? "").toLowerCase();
-    const name = String(segment?.metadata?.name ?? "").toLowerCase();
-    const subcategory = String(segment?.metadata?.subcategoryName ?? "").toLowerCase();
-    const categoryName = String(segment?.metadata?.categoryName ?? "").toLowerCase();
-
-    switch (item) {
-        case "rpg":
-            return type === "gadget" && (key === "gad_rl_ungui" || name.includes("rpg"));
-        case "c4":
-            return type === "gadget" && (key === "gad_c4" || name.includes("c-4") || name.includes("c4"));
-        case "mines":
-            return type === "gadget" && (key.includes("gad_mine") || subcategory.includes("mine") || categoryName.includes("mine"));
-        case "m15":
-            return type === "gadget" && (key === "gad_mine_press" || name.includes("m15"));
-        case "m18a1":
-            return type === "gadget" && (
-                name.includes("m18a1") ||
-                name.includes("m18 a1") ||
-                key.includes("m18a1")
-            );
-        case "knife":
-            return type === "gadget" && (
-                name.includes("combat knife") ||
-                name.includes("knife") ||
-                key.includes("knife")
-            );
-        case "frag":
-            return type === "gadget" && (
-                name.includes("frag grenade") ||
-                name.includes("grenade") && name.includes("frag") ||
-                key.includes("frag")
-            );
-        case "sledgehammer":
-            return type === "gadget" && (
-                name.includes("sledgehammer") ||
-                key.includes("melee_heavy_sledge")
-            );
-        default:
-            return vehicleSegmentMatches(segment, item as BF6VehicleSnapshotKey);
+    if (item in BF6_GADGET_BY_KEY) {
+        return gadgetSegmentMatches(segment, item as BF6GadgetSnapshotKey);
     }
+    return vehicleSegmentMatches(segment, item as BF6VehicleSnapshotKey);
 }
 
 export function extractItemSnapshots(playerId: string, payload: any): BF6ItemSnapshot[] {
