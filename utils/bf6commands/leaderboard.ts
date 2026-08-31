@@ -59,12 +59,12 @@ export const leaderboardHandler: BF6Handler = async (sub, msg, args, safeReply) 
         case "rank":
             if (isProgress) {
                 const current = await getBF6Data();
-                sorted = [...current].sort((a, b) => b.careerPlayerRank - a.careerPlayerRank);
+                sorted = [...current].sort((a, b) => (b.careerPlayerRank ?? -1) - (a.careerPlayerRank ?? -1));
             } else {
-                sorted = [...bfdata].sort((a, b) => b.careerPlayerRank - a.careerPlayerRank);
+                sorted = [...bfdata].sort((a, b) => (b.careerPlayerRank ?? -1) - (a.careerPlayerRank ?? -1));
             }
             content = sorted
-                .map((p) => `${leaderboardStatusMarker(p.status)}${p.platformUserHandle} - Rank ${p.careerPlayerRank}`)
+                .map((p) => `${leaderboardStatusMarker(p.status)}${p.platformUserHandle} - Rank ${p.careerPlayerRank ?? "—"}`)
                 .join("\n");
             break;
 

@@ -2,6 +2,10 @@ import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqli
 
 export const bf6PlayerStatus = ['active', 'private', 'inactive', 'not_found'] as const;
 export type BF6PlayerStatus = typeof bf6PlayerStatus[number];
+export const bf6AliasNamespaces = ['tracker', 'ea', 'steam'] as const;
+export type BF6AliasNamespace = typeof bf6AliasNamespaces[number];
+export const bf6AliasSources = ['manual', 'tracker', 'gametools'] as const;
+export type BF6AliasSource = typeof bf6AliasSources[number];
 
 export const bf6Players = sqliteTable('bf6_players', {
     id: text('id').primaryKey(), // Using the ID from tracker.gg as the primary key
@@ -13,6 +17,20 @@ export const bf6Players = sqliteTable('bf6_players', {
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
+export const bf6PlayerAliases = sqliteTable('bf6_player_aliases', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    playerId: text('player_id').notNull().references(() => bf6Players.id),
+    namespace: text('namespace', { enum: bf6AliasNamespaces }).notNull(),
+    handle: text('handle').notNull(),
+    normalizedHandle: text('normalized_handle').notNull(),
+    source: text('source', { enum: bf6AliasSources }).notNull(),
+    firstSeenAt: integer('first_seen_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+    lastSeenAt: integer('last_seen_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => ({
+    playerAliasUq: uniqueIndex('bf6_player_alias_uq').on(table.playerId, table.namespace, table.normalizedHandle),
+    playerLastSeenIdx: index('bf6_alias_player_last_seen_idx').on(table.playerId, table.lastSeenAt),
+}));
+
 export const bf6Scrapes = sqliteTable('bf6_scrapes', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     playerId: text('player_id').notNull().references(() => bf6Players.id),
@@ -20,7 +38,8 @@ export const bf6Scrapes = sqliteTable('bf6_scrapes', {
     deaths: integer('deaths').notNull(),
     revives: integer('revives').notNull(),
     score: integer('score').notNull(),
-    careerPlayerRank: integer('career_player_rank').notNull(),
+    careerPlayerRank: integer('career_player_rank'),
+    source: text('source').notNull().default('tracker'),
     timePlayedDisplay: text('time_played_display').notNull(),
     timePlayedValue: integer('time_played_value').notNull(),
     scrapedAt: integer('scraped_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),

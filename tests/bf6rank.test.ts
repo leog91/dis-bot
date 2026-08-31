@@ -12,7 +12,15 @@ import {
     extractItemSnapshots,
     extractClassSnapshots,
     fetchPlayerData,
+    normalizeBF6AliasHandle,
 } from "../utils/bf6rank";
+
+describe("normalizeBF6AliasHandle", () => {
+    it("normalizes aliases case-insensitively while preserving punctuation", () => {
+        expect(normalizeBF6AliasHandle("  SharpVertexXx ")).toBe("sharpvertexxx");
+        expect(normalizeBF6AliasHandle("ByteS-«Master Mind»")).toBe("bytes-«master mind»");
+    });
+});
 
 describe("normalizeKey", () => {
     it("lowercases and strips non-alphanumeric chars", () => {
@@ -446,14 +454,21 @@ describe("extractClassSnapshots", () => {
 describe("fetchPlayerData status handling", () => {
     const originalFetch = globalThis.fetch;
     const originalError = console.error;
+    const originalProvider = process.env.BF6_STATS_PROVIDER;
 
     beforeEach(() => {
         console.error = () => {};
+        process.env.BF6_STATS_PROVIDER = "tracker";
     });
 
     afterEach(() => {
         globalThis.fetch = originalFetch;
         console.error = originalError;
+        if (originalProvider === undefined) {
+            delete process.env.BF6_STATS_PROVIDER;
+        } else {
+            process.env.BF6_STATS_PROVIDER = originalProvider;
+        }
     });
 
     it("returns private status on 403", async () => {
@@ -466,6 +481,18 @@ describe("fetchPlayerData status handling", () => {
 
         const result = await fetchPlayerData({ userName: "privateUser", id: "private-id" });
         expect(result).toEqual({ ok: false, status: "private" });
+    });
+
+    it("identifies an HTML 403 as API blocking", async () => {
+        globalThis.fetch = (() =>
+            Promise.resolve({
+                ok: false,
+                status: 403,
+                headers: new Headers({ "content-type": "text/html; charset=UTF-8" }),
+            } as Response)) as unknown as typeof fetch;
+
+        const result = await fetchPlayerData({ userName: "blockedUser", id: "blocked-id" });
+        expect(result).toEqual({ ok: false, status: "inactive", apiBlocked: true });
     });
 
     it("returns not_found status on 404", async () => {
@@ -496,6 +523,24 @@ describe("fetchPlayerData status handling", () => {
         globalThis.fetch = (() => Promise.reject(new Error("network failure"))) as unknown as typeof fetch;
 
         const result = await fetchPlayerData({ userName: "networkUser", id: "network-id" });
+        expect(result).toEqual({ ok: false, status: "inactive" });
+    });
+
+    it("times out when response headers never arrive", async () => {
+        globalThis.fetch = (() => new Promise(() => {})) as unknown as typeof fetch;
+
+        const result = await fetchPlayerData({ userName: "slowUser", id: "slow-id" }, 10);
+        expect(result).toEqual({ ok: false, status: "inactive" });
+    });
+
+    it("times out when the response body never finishes", async () => {
+        globalThis.fetch = (() =>
+            Promise.resolve({
+                ok: true,
+                json: () => new Promise(() => {}),
+            } as unknown as Response)) as unknown as typeof fetch;
+
+        const result = await fetchPlayerData({ userName: "slowBodyUser", id: "slow-body-id" }, 10);
         expect(result).toEqual({ ok: false, status: "inactive" });
     });
 });

@@ -1,5 +1,5 @@
 import { db } from "../db/index";
-import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6WeaponPlaystyles, bf6ClassSnapshots, type BF6PlayerStatus } from "../db/schema";
+import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6PlayerAliases, bf6WeaponPlaystyles, bf6ClassSnapshots, type BF6PlayerStatus } from "../db/schema";
 import { desc, eq, sql, and, lt, gt, lte, gte } from "drizzle-orm";
 import { PlayerRank, updateBf6Data } from "./bf6rank";
 import type { BF6GadgetSnapshotKey } from "./bf6gadgets";
@@ -23,6 +23,19 @@ export type BF6ItemLeaderboardRow = {
     timePlayedValue: number;
     timePlayedDisplay: string;
 };
+
+export async function getPlayerAliasHistory(playerId: string) {
+    return db.select({
+        namespace: bf6PlayerAliases.namespace,
+        handle: bf6PlayerAliases.handle,
+        source: bf6PlayerAliases.source,
+        firstSeenAt: bf6PlayerAliases.firstSeenAt,
+        lastSeenAt: bf6PlayerAliases.lastSeenAt,
+    })
+        .from(bf6PlayerAliases)
+        .where(eq(bf6PlayerAliases.playerId, playerId))
+        .orderBy(desc(bf6PlayerAliases.lastSeenAt));
+}
 
 /**
  * Fetches the latest scrape data for all players

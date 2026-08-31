@@ -1,11 +1,37 @@
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
-import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6WeaponPlaystyles, bf6ClassSnapshots } from "../db/schema";
+import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6PlayerAliases, bf6WeaponPlaystyles, bf6ClassSnapshots } from "../db/schema";
 import { eq } from "drizzle-orm";
 import type { BF6PlayerStatus } from "../db/schema";
 import { BF6_GADGETS, BF6_GADGET_BY_KEY, gadgetSegmentMatches, type BF6GadgetSnapshotKey } from "./bf6gadgets";
 import { BF6_VEHICLES, vehicleSegmentMatches, type BF6VehicleSnapshotKey } from "./bf6vehicles";
+import { getBF6Provider } from "./bf6providers";
+import { BF6_REQUEST_TIMEOUT_MS } from "./bf6providers/types";
+import type {
+    BF6ClassKey,
+    BF6ClassSnapshot,
+    BF6ItemSnapshot,
+    BF6ItemSnapshotKey,
+    Player,
+    PlayerConfig,
+    PlayerFetchResult,
+    PlayerRank,
+    WeaponPlaystyleSnapshot,
+    BF6StatsProvider,
+} from "./bf6providers/types";
+
+// Re-export the provider-owned types so existing imports from this module keep working.
+export type {
+    BF6ClassKey,
+    BF6ClassSnapshot,
+    BF6ItemSnapshot,
+    BF6ItemSnapshotKey,
+    Player,
+    PlayerFetchResult,
+    PlayerRank,
+    WeaponPlaystyleSnapshot,
+} from "./bf6providers/types";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,15 +41,17 @@ const fallbackPlayersConfigPath = process.env.ASSETS_PRIVATE_DIR
     : path.join(__dirname, "..", "config", "bf6players.json");
 const PLAYERS_CONFIG_PATH = process.env.BF6_PLAYERS_CONFIG_PATH ?? fallbackPlayersConfigPath;
 
-type Player = {
-    userName: string;
-    id: string;
-};
-
 async function loadPlayers(): Promise<Player[]> {
     try {
         const data = await fs.readFile(PLAYERS_CONFIG_PATH, "utf-8");
-        return JSON.parse(data);
+        const configs = JSON.parse(data) as PlayerConfig[];
+        return configs.map((config) => ({
+            userName: config.userName,
+            id: config.ids.tracker.profileId,
+            personaId: config.ids.ea.personaId,
+            configuredAliases: (["tracker", "ea", "steam"] as const).flatMap((namespace) =>
+                (config.nicks[namespace] ?? []).map((handle) => ({ namespace, handle, source: "manual" as const }))),
+        }));
     } catch (error) {
         console.error("❌ Failed to load BF6 players config:", error);
         return [];
@@ -34,73 +62,45 @@ async function delay(ms: number) {
     return new Promise(res => setTimeout(res, ms));
 }
 
-export type PlayerRank = {
-    id: string;
-    kills: number;
-    deaths: number
-    revives: number
-    platformUserHandle: string;
-    user: string;
-    score: number;
-    careerPlayerRank: number;
-    timePlayedDisplay: string;
-    timePlayedValue: number;
-    profileUrl: string;
-};
+function getProviderConcurrency(provider: BF6StatsProvider): number {
+    if (provider.name === "tracker") return 1;
+    const configured = Number(process.env.BF6_FETCH_CONCURRENCY ?? provider.defaultConcurrency);
+    if (!Number.isFinite(configured)) return provider.defaultConcurrency;
+    return Math.max(1, Math.min(5, Math.floor(configured)));
+}
 
-export type WeaponPlaystyleSnapshot = {
-    playerId: string;
-    weaponName: string;
-    kills: number;
-    timePlayedValue: number;
-    timePlayedDisplay: string;
-    adsKills: number;
-    hipfireKills: number;
-    headshots: number;
-    shotsHit: number;
-    shotsFired: number;
-    adsPct: number; // basis points (x100)
-    hipfirePct: number; // basis points (x100)
-    headshotPct: number; // basis points (x100)
-    accuracyPct: number; // basis points (x100)
-};
+async function fetchPlayers(
+    players: Player[],
+    provider: BF6StatsProvider,
+): Promise<Map<string, PlayerFetchResult>> {
+    const results = new Map<string, PlayerFetchResult>();
+    const concurrency = Math.min(players.length, getProviderConcurrency(provider));
+    let nextIndex = 0;
+    let blocked = false;
 
-export type BF6ItemSnapshotKey = BF6GadgetSnapshotKey | BF6VehicleSnapshotKey;
+    const worker = async () => {
+        while (!blocked) {
+            const index = nextIndex++;
+            if (index >= players.length) return;
 
-export type BF6ItemSnapshot = {
-    playerId: string;
-    itemKey: BF6ItemSnapshotKey;
-    kills: number;
-    timePlayedValue: number;
-    timePlayedDisplay: string;
-};
+            const player = players[index];
+            const result = await provider.fetchPlayer(player);
+            results.set(player.id, result);
+            if ("apiBlocked" in result && result.apiBlocked) {
+                blocked = true;
+                return;
+            }
+            if (provider.requestDelayMs) await delay(provider.requestDelayMs);
+        }
+    };
 
-export type BF6ClassKey = "kit_assault" | "kit_engineer" | "kit_support" | "kit_recon";
+    await Promise.all(Array.from({ length: concurrency }, () => worker()));
+    return results;
+}
 
-export type BF6ClassSnapshot = {
-    playerId: string;
-    classKey: BF6ClassKey;
-    className: string;
-    timePlayedValue: number;
-    timePlayedDisplay: string;
-    kills: number;
-    deaths: number;
-    assists: number;
-    revives: number;
-    deployments: number;
-    kdRatio: number; // stored as basis points (x100)
-};
-
-type PlayerFetchSuccess = {
-    rank: PlayerRank;
-    weaponPlaystyles: WeaponPlaystyleSnapshot[];
-    itemSnapshots: BF6ItemSnapshot[];
-    classSnapshots: BF6ClassSnapshot[];
-};
-
-export type PlayerFetchResult =
-    | { ok: true; data: PlayerFetchSuccess }
-    | { ok: false; status: BF6PlayerStatus };
+export function normalizeBF6AliasHandle(handle: string): string {
+    return handle.trim().toLowerCase();
+}
 
 export function normalizeKey(value: string): string {
     return value.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -333,93 +333,28 @@ export function extractWeaponPlaystyles(playerId: string, payload: any): WeaponP
     return [...byWeapon.values()].sort((a, b) => b.timePlayedValue - a.timePlayedValue);
 }
 
-export async function fetchPlayerData(player: Player): Promise<PlayerFetchResult> {
-    try {
-        const url = `https://api.tracker.gg/api/v2/bf6/standard/profile/ign/${player.id}`
-        const response = await fetch(url, {
-            headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-                "Accept": "application/json",
-                "Accept-Language": "en-US,en;q=0.9",
-            },
-        });
-
-        if (!response.ok) {
-            if (response.status === 403) {
-                console.log(`🔒 ${player.userName}: profile private`);
-                return { ok: false, status: "private" };
-            }
-            if (response.status === 404) {
-                console.log(`❓ ${player.userName}: profile not found`);
-                return { ok: false, status: "not_found" };
-            }
-            console.error(`❌ Failed to fetch ${player.userName}: Status ${response.status}`);
-            return { ok: false, status: "inactive" };
-        }
-
-        const data = await response.json();
-
-        const kills = data.data?.segments?.[0]?.stats?.playerKills?.value ?? 0;
-        const deaths = data.data?.segments?.[0]?.stats?.deaths?.value ?? 0;
-        const revives = data.data?.segments?.[0]?.stats?.revives?.value ?? 0;
-        const score = data.data?.segments?.[0]?.stats?.score?.value ?? 0;
-        const careerPlayerRank = data.data?.segments?.[0]?.stats?.careerPlayerRank?.value ?? 0;
-        const timePlayedDisplay = data.data?.segments?.[0]?.stats?.timePlayed?.displayValue ?? "N/A";
-        const timePlayedValue = data.data?.segments?.[0]?.stats?.timePlayed?.value ?? 0;
-        const profileUrl = `https://tracker.gg/bf6/profile/${player.id}/overview`;
-
-        const platformUserHandle = data.data?.platformInfo?.platformUserHandle ?? "N/A";
-        const weaponPlaystyles = extractWeaponPlaystyles(player.id, data);
-        const itemSnapshots = extractItemSnapshots(player.id, data);
-        const classSnapshots = extractClassSnapshots(player.id, data);
-
-        console.log(`✅ ${player.userName}: ${kills} kills`);
-
-        return {
-            ok: true,
-            data: {
-                rank: {
-                    id: player.id,
-                    kills,
-                    platformUserHandle,
-                    user: player.userName,
-                    deaths,
-                    revives,
-                    score,
-                    careerPlayerRank,
-                    timePlayedDisplay,
-                    timePlayedValue,
-                    profileUrl
-                },
-                weaponPlaystyles,
-                itemSnapshots,
-                classSnapshots,
-            },
-        };
-    } catch (error) {
-        console.error(`❌ Failed to fetch ${player.userName}:`, error);
-        return { ok: false, status: "inactive" };
-    }
+export async function fetchPlayerData(
+    player: Player,
+    timeoutMs = BF6_REQUEST_TIMEOUT_MS,
+): Promise<PlayerFetchResult> {
+    const provider = await getBF6Provider();
+    return provider.fetchPlayer(player, timeoutMs);
 }
 
 export async function bf6Rank(): Promise<PlayerRank[]> {
-    console.log("Fetching player data sequentially...\n");
-
     const players = await loadPlayers();
+    const provider = await getBF6Provider();
     if (players.length === 0) {
         console.error(`❌ No players configured. Check ${PLAYERS_CONFIG_PATH}`);
         return [];
     }
 
     const playerRank: PlayerRank[] = [];
-
-    // Sequential fetching to avoid rate limits
+    console.log(`Fetching player data with ${provider.name} (concurrency ${getProviderConcurrency(provider)})...\n`);
+    const fetchResults = await fetchPlayers(players, provider);
     for (const player of players) {
-        const data = await fetchPlayerData(player);
-        if (data.ok) {
-            playerRank.push(data.data.rank);
-        }
-        await delay(1000);
+        const result = fetchResults.get(player.id);
+        if (result?.ok) playerRank.push(result.data.rank);
     }
 
     // Sort by kills descending
@@ -444,20 +379,20 @@ async function runBf6DataUpdate() {
     const results: PlayerRank[] = [];
     const fetchResults = new Map<string, PlayerFetchResult>();
     const players = await loadPlayers();
+    const provider = await getBF6Provider();
 
     if (players.length === 0) {
         console.error(`❌ No players configured. Check ${PLAYERS_CONFIG_PATH}`);
         return [];
     }
 
-    console.log("Fetching player data sequentially...");
+    console.log(`Fetching player data with ${provider.name} (concurrency ${getProviderConcurrency(provider)})...`);
+    const providerResults = await fetchPlayers(players, provider);
     for (const player of players) {
-        const result = await fetchPlayerData(player);
+        const result = providerResults.get(player.id);
+        if (!result) continue;
         fetchResults.set(player.id, result);
-        if (result.ok) {
-            results.push(result.data.rank);
-        }
-        await delay(1000);
+        if (result.ok) results.push(result.data.rank);
     }
 
     if (results.length === 0) {
@@ -477,7 +412,9 @@ async function runBf6DataUpdate() {
             const result = fetchResults.get(player.id);
             if (!result) continue;
 
-            const profileUrl = `https://tracker.gg/bf6/profile/${player.id}/overview`;
+            const profileUrl = result.ok
+                ? result.data.rank.profileUrl
+                : `https://tracker.gg/bf6/profile/${player.id}/overview`;
 
             // 1. Upsert Metadata (always, so status is tracked even for private/inactive players)
             const existingPlayer = await db.select().from(bf6Players).where(eq(bf6Players.id, player.id)).get();
@@ -512,10 +449,50 @@ async function runBf6DataUpdate() {
                 });
             }
 
+            const configuredAliases = (player.configuredAliases ?? [])
+                .map((alias) => ({
+                    ...alias,
+                    handle: alias.handle.trim(),
+                    normalizedHandle: normalizeBF6AliasHandle(alias.handle),
+                }))
+                .filter((alias) => alias.normalizedHandle.length > 0);
+            if (configuredAliases.length > 0) {
+                await db.insert(bf6PlayerAliases).values(configuredAliases.map((alias) => ({
+                    playerId: player.id,
+                    namespace: alias.namespace,
+                    handle: alias.handle,
+                    normalizedHandle: alias.normalizedHandle,
+                    source: alias.source,
+                    firstSeenAt: scrapedAt,
+                    lastSeenAt: scrapedAt,
+                }))).onConflictDoNothing();
+            }
+
             if (!result.ok) continue;
 
             const entry = result.data;
             const p = entry.rank;
+
+            const observedHandle = p.platformUserHandle.trim();
+            if (observedHandle) {
+                const namespace = provider.name === "gametools" ? "ea" : "tracker";
+                const normalizedHandle = normalizeBF6AliasHandle(observedHandle);
+                await db.insert(bf6PlayerAliases).values({
+                    playerId: player.id,
+                    namespace,
+                    handle: observedHandle,
+                    normalizedHandle,
+                    source: provider.name,
+                    firstSeenAt: scrapedAt,
+                    lastSeenAt: scrapedAt,
+                }).onConflictDoUpdate({
+                    target: [bf6PlayerAliases.playerId, bf6PlayerAliases.namespace, bf6PlayerAliases.normalizedHandle],
+                    set: {
+                        handle: observedHandle,
+                        lastSeenAt: scrapedAt,
+                    },
+                });
+            }
 
             // 2. Insert Scrape
             await db.insert(bf6Scrapes).values({
@@ -525,6 +502,7 @@ async function runBf6DataUpdate() {
                 revives: p.revives,
                 score: p.score,
                 careerPlayerRank: p.careerPlayerRank,
+                source: provider.name,
                 timePlayedDisplay: p.timePlayedDisplay,
                 timePlayedValue: p.timePlayedValue,
                 scrapedAt: scrapedAt
