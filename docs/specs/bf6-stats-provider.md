@@ -90,6 +90,10 @@ Providers key players differently. The players config (`config/bf6players.json`,
 | careerPlayerRank | `careerPlayerRank.value` | **NULL** | gametools exposes XP totals, not rank. |
 | profileUrl | `https://tracker.gg/bf6/profile/{id}/overview` | same (kept) | Still the canonical public profile page. |
 | platformUserHandle | `platformInfo.platformUserHandle` | `userName` | |
+| AI kills | unavailable | `dividedKills.ai`, otherwise `kills - dividedKills.human` | Nullable; current BF6 payloads expose total and human kills but may omit the direct AI key. Human kills remain the canonical `kills` value. |
+| wins / losses / matches | unavailable | `wins` / `loses` / `matchesPlayed` | Nullable lifetime counters. The upstream loss key is misspelled. |
+| damage / shots | unavailable | `damage` / `shotsFired` / `shotsHit` | Accuracy and damage per minute are derived locally. |
+| teamplay | unavailable | `killAssists`, `heals`, `resupplies`, `repairs`, `squadmateRevive`, `enemiesSpotted` | Nullable lifetime counters. |
 | weapon playstyles | weapon segments | `weapons[]` | ADS kills <- `scopedKills`; hipfire <- `hipfireKills`; headshots <- `headshotKills`; accuracy <- `shotsHit`/`shotsFired`; playtime <- `timeEquipped` (>= 3600s filter kept). |
 | gadget snapshots | gadget segments | `gadgets[]` + `melee[]` | matched by item `id` against `BF6_GADGETS[].exactKeys`; playtime <- `secondsPlayed` / `timeEquipped`. |
 | vehicle snapshots | vehicle segments | `vehicles[]`, `vehicleGroups[]`, `vehicleArchetypes[]` | exact items match by id; aggregate commands use provider group/archetype rows; playtime <- `timeIn`. |
@@ -123,6 +127,9 @@ to match tracker semantics; ground transport remains the least exact aggregate.
   scrape came from (decided: track provenance explicitly).
 - `bf6_scrapes.career_player_rank` — becomes **nullable**. Existing tracker rows keep
   their values; gametools scrapes insert NULL.
+- Player-card counters (`ai_kills`, wins/losses/matches, damage/shots, and teamplay
+  counters) are nullable columns on each historical scrape. Existing and tracker rows
+  keep NULL rather than treating unavailable values as zero.
 
 `PlayerRank.careerPlayerRank` becomes `number | null` accordingly.
 
@@ -147,6 +154,21 @@ handle and advances `last_seen_at`; it never rewrites `bf6players.json`. Existin
 
 - `bf6 ... rank`: players with a NULL rank display `Rank —`; sorts place NULLs last.
 - All other sorts (kills, revives, items, classes, playstyle) unaffected.
+
+## Player cards
+
+- `bf6 stats [user]` shows lifetime human kills, deaths, K/D, wins/losses, win rate,
+  matches, accuracy, human KPM, damage per minute, damage, score, and playtime.
+- `bf6 teamplay [user]` shows revives, squad revives, kill assists, heals, resupplies,
+  repairs, and enemies spotted.
+- `bf6 ai [user]` shows human and AI kills with their classified-kill shares.
+- `bf6 aliases [user]` groups configured and observed handles by EA, Steam, and tracker
+  namespace with observation dates. `nicks` and `nick` resolve to this command.
+
+K/D, win rate, accuracy, KPM, DPM, and human/AI shares are derived from stored counters.
+Unavailable counters display `-`; a zero denominator displays zero except K/D with kills
+and no deaths, which displays `inf`. Player lookup accepts canonical names, current handles,
+tracker IDs, and exact historical aliases.
 
 ## Provider selection / rollout
 

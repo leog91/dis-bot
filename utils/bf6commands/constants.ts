@@ -37,6 +37,9 @@ export const SUBCOMMANDS = [
     "score",
     "rank",
     "timePlayed",
+    "stats",
+    "teamplay",
+    "ai",
     "playStyle",
     "bans",
     "refresh",
@@ -49,12 +52,13 @@ export const SUBCOMMANDS = [
     "support",
     "recon",
     "history",
+    "aliases",
 ] as const;
 
 export type SubCommand = typeof SUBCOMMANDS[number];
 
 const SUBCOMMAND_HELP_CATEGORIES: readonly { title: string; commands: readonly SubCommand[] }[] = [
-    { title: "Stats", commands: ["kills", "deaths", "revives", "score", "rank", "timePlayed", "playStyle", "history"] },
+    { title: "Stats", commands: ["kills", "deaths", "revives", "score", "rank", "timePlayed", "stats", "teamplay", "ai", "playStyle", "history"] },
     { title: "Combat Gadget Groups", commands: ["combatgadgets", "launchers", "mines", "grenades", "melee"] },
     { title: "Launchers", commands: ["m320he", "m320thrm", "sichg1wp", "rpg", "mas148", "spire", "m136at", "igla"] },
     { title: "Explosives & Grenades", commands: ["ptkm1r", "mine", "claymore", "slam", "c4", "frag", "incendiary"] },
@@ -63,7 +67,7 @@ const SUBCOMMAND_HELP_CATEGORIES: readonly { title: string; commands: readonly S
     { title: "Aircraft", commands: ["falchion", "f61v", "kestrel", "panthera", "f39e", "su57", "seacat", "superspectre", "littlebird"] },
     { title: "Ground & Naval", commands: ["glider96", "m1a2", "strf09", "leo2a4", "cheetah", "bradley", "royalptv", "rugged", "traverser", "rhib", "vector", "tm450", "m1030", "ltv", "rcb90"] },
     { title: "Classes", commands: ["class", "assault", "engineer", "support", "recon"] },
-    { title: "Other", commands: ["trackergg", "refresh", "bans"] },
+    { title: "Other", commands: ["aliases", "trackergg", "refresh", "bans"] },
 ];
 
 export const SUBCOMMANDS_HELP = SUBCOMMAND_HELP_CATEGORIES
@@ -72,7 +76,11 @@ export const SUBCOMMANDS_HELP = SUBCOMMAND_HELP_CATEGORIES
 
 export const SUBCOMMAND_ALIASES: Partial<Record<SubCommand, string[]>> = {
     timePlayed: ["time", "playtime", "hours"],
-    trackergg: ["tracker", "tg", "nicks", "nick"],
+    stats: ["profile", "overview"],
+    teamplay: ["teamwork"],
+    ai: ["bots", "botkills"],
+    aliases: ["alias", "names", "nicks", "nick"],
+    trackergg: ["tracker", "tg"],
     assault: ["aslt"],
     engineer: ["eng"],
     support: ["sup"],

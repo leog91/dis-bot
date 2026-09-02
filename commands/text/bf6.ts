@@ -14,6 +14,7 @@ import {
     classesHandler,
     historyHandler,
     refreshHandler,
+    playerHandler,
 } from "../../utils/bf6commands";
 
 async function safeReply(msg: Message, content: string): Promise<Message | void> {
@@ -43,6 +44,9 @@ const HANDLERS: Partial<Record<SubCommand, (msg: Message, args: string[], reply:
     score: (m, a, r) => leaderboardHandler("score", m, a, r),
     rank: (m, a, r) => leaderboardHandler("rank", m, a, r),
     timePlayed: (m, a, r) => leaderboardHandler("timePlayed", m, a, r),
+    stats: (m, a, r) => playerHandler("stats", m, a, r),
+    teamplay: (m, a, r) => playerHandler("teamplay", m, a, r),
+    ai: (m, a, r) => playerHandler("ai", m, a, r),
     trackergg: (m, a, r) => leaderboardHandler("trackergg", m, a, r),
     playStyle: (m, a, r) => playStyleHandler("playStyle", m, a, r),
     rpg: (m, a, r) => itemsHandler("rpg", m, a, r),
@@ -58,6 +62,7 @@ const HANDLERS: Partial<Record<SubCommand, (msg: Message, args: string[], reply:
     support: (m, a, r) => classesHandler("support", m, a, r),
     recon: (m, a, r) => classesHandler("recon", m, a, r),
     history: (m, a, r) => historyHandler("history", m, a, r),
+    aliases: (m, a, r) => playerHandler("aliases", m, a, r),
     refresh: (m, a, r) => refreshHandler("refresh", m, a, r),
     bans: async (_msg, _args, reply) => {
         await reply("pablocc74 - 2 bans");

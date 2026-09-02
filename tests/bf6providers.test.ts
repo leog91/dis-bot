@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { gametoolsProvider } from "../utils/bf6providers/gametools";
+import { trackerProvider } from "../utils/bf6providers/tracker";
 
 describe("gametools BF6 provider", () => {
     const originalFetch = globalThis.fetch;
@@ -24,6 +25,18 @@ describe("gametools BF6 provider", () => {
             dividedKills: { human: 42 },
             deaths: 10,
             revives: 5,
+            wins: 8,
+            loses: 2,
+            matchesPlayed: 11,
+            damage: 9876,
+            shotsFired: 1000,
+            shotsHit: 250,
+            killAssists: 23,
+            heals: 44,
+            resupplies: 55,
+            repairs: 66,
+            squadmateRevive: 4,
+            enemiesSpotted: 77,
             score: 1234,
             secondsPlayed: 7200,
             timePlayed: "2:00:00",
@@ -75,8 +88,21 @@ describe("gametools BF6 provider", () => {
         expect(result.data.rank).toMatchObject({
             id: "tracker-id",
             kills: 42,
+            aiKills: 58,
             deaths: 10,
             revives: 5,
+            wins: 8,
+            losses: 2,
+            matchesPlayed: 11,
+            damage: 9876,
+            shotsFired: 1000,
+            shotsHit: 250,
+            killAssists: 23,
+            heals: 44,
+            resupplies: 55,
+            repairs: 66,
+            squadmateRevives: 4,
+            enemiesSpotted: 77,
             score: 1234,
             platformUserHandle: "EAPlayer",
             careerPlayerRank: null,
@@ -117,5 +143,71 @@ describe("gametools BF6 provider", () => {
             personaId: "persona-id",
         });
         expect(result).toEqual({ ok: false, status: "not_found" });
+    });
+
+    it("keeps unavailable gametools counters nullable", async () => {
+        console.log = () => {};
+        globalThis.fetch = (() => Promise.resolve(new Response(JSON.stringify({
+            userName: "EAPlayer",
+            dividedKills: { human: 0 },
+            deaths: 0,
+            revives: 0,
+            score: 0,
+            classes: [{ id: "kit", className: "All", secondsPlayed: 0 }],
+        }), { status: 200 }))) as unknown as typeof fetch;
+
+        const result = await gametoolsProvider.fetchPlayer({
+            userName: "LocalPlayer",
+            id: "tracker-id",
+            personaId: "persona-id",
+        });
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+
+        expect(result.data.rank).toMatchObject({
+            kills: 0,
+            aiKills: null,
+            wins: null,
+            losses: null,
+            matchesPlayed: null,
+            damage: null,
+            shotsFired: null,
+            shotsHit: null,
+            killAssists: null,
+            heals: null,
+            resupplies: null,
+            repairs: null,
+            squadmateRevives: null,
+            enemiesSpotted: null,
+        });
+    });
+
+    it("keeps unsupported tracker counters nullable", async () => {
+        console.log = () => {};
+        globalThis.fetch = (() => Promise.resolve(new Response(JSON.stringify({
+            data: {
+                segments: [{ stats: {
+                    playerKills: { value: 12 },
+                    deaths: { value: 3 },
+                    revives: { value: 2 },
+                    score: { value: 500 },
+                    timePlayed: { value: 3600, displayValue: "1h" },
+                } }],
+                platformInfo: { platformUserHandle: "TrackerPlayer" },
+            },
+        }), { status: 200 }))) as unknown as typeof fetch;
+
+        const result = await trackerProvider.fetchPlayer({ userName: "Player", id: "tracker-id" });
+        expect(result.ok).toBe(true);
+        if (!result.ok) return;
+
+        expect(result.data.rank).toMatchObject({
+            kills: 12,
+            aiKills: null,
+            wins: null,
+            losses: null,
+            matchesPlayed: null,
+            killAssists: null,
+        });
     });
 });

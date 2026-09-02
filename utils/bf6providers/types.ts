@@ -42,8 +42,21 @@ export type PlayerConfig = {
 export type PlayerRank = {
     id: string;
     kills: number;
+    aiKills: number | null;
     deaths: number;
     revives: number;
+    wins: number | null;
+    losses: number | null;
+    matchesPlayed: number | null;
+    damage: number | null;
+    shotsFired: number | null;
+    shotsHit: number | null;
+    killAssists: number | null;
+    heals: number | null;
+    resupplies: number | null;
+    repairs: number | null;
+    squadmateRevives: number | null;
+    enemiesSpotted: number | null;
     platformUserHandle: string;
     user: string;
     score: number;

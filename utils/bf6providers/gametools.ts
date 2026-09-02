@@ -22,6 +22,12 @@ function num(value: unknown): number {
     return Number.isFinite(n) ? n : 0;
 }
 
+function optionalInt(value: unknown): number | null {
+    if (value === null || value === undefined || value === "") return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.round(n) : null;
+}
+
 function normalizeId(value: unknown): string {
     return String(value ?? "").toLowerCase();
 }
@@ -220,7 +226,15 @@ async function fetchPlayer(
         }
 
         // Human-only kills to match tracker "playerKills" semantics (excludes AI bots).
-        const kills = Math.round(num(data?.dividedKills?.human ?? data?.kills));
+        const totalKills = optionalInt(data?.kills);
+        const humanKills = optionalInt(data?.dividedKills?.human);
+        const kills = humanKills ?? totalKills ?? 0;
+        const explicitAiKills = optionalInt(data?.dividedKills?.ai);
+        const aiKills = explicitAiKills ?? (
+            totalKills !== null && humanKills !== null
+                ? Math.max(0, totalKills - humanKills)
+                : null
+        );
         const deaths = Math.round(num(data?.deaths));
         const revives = Math.round(num(data?.revives));
         const score = Math.round(num(data?.score));
@@ -239,10 +253,23 @@ async function fetchPlayer(
                 rank: {
                     id: player.id,
                     kills,
+                    aiKills,
                     platformUserHandle,
                     user: player.userName,
                     deaths,
                     revives,
+                    wins: optionalInt(data?.wins),
+                    losses: optionalInt(data?.loses ?? data?.losses),
+                    matchesPlayed: optionalInt(data?.matchesPlayed),
+                    damage: optionalInt(data?.damage),
+                    shotsFired: optionalInt(data?.shotsFired),
+                    shotsHit: optionalInt(data?.shotsHit),
+                    killAssists: optionalInt(data?.killAssists),
+                    heals: optionalInt(data?.heals),
+                    resupplies: optionalInt(data?.resupplies),
+                    repairs: optionalInt(data?.repairs),
+                    squadmateRevives: optionalInt(data?.squadmateRevive ?? data?.squadmateRevives),
+                    enemiesSpotted: optionalInt(data?.enemiesSpotted),
                     score,
                     careerPlayerRank: null, // gametools has no career rank
                     timePlayedDisplay,

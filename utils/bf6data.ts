@@ -24,6 +24,41 @@ export type BF6ItemLeaderboardRow = {
     timePlayedDisplay: string;
 };
 
+async function resolveBF6Player(userInput: string) {
+    const normalized = userInput.trim().toLowerCase();
+    if (!normalized) return null;
+
+    const players = await db.select({
+        id: bf6Players.id,
+        user: bf6Players.user,
+        platformUserHandle: bf6Players.platformUserHandle,
+        profileUrl: bf6Players.profileUrl,
+        status: bf6Players.status,
+    }).from(bf6Players);
+
+    const exact = players.find((player) =>
+        player.id.toLowerCase() === normalized ||
+        player.user.toLowerCase() === normalized ||
+        player.platformUserHandle.toLowerCase() === normalized
+    );
+    if (exact) return exact;
+
+    const aliases = await db.select({
+        playerId: bf6PlayerAliases.playerId,
+        normalizedHandle: bf6PlayerAliases.normalizedHandle,
+    }).from(bf6PlayerAliases);
+    const aliasMatch = aliases.find((alias) => alias.normalizedHandle === normalized);
+    if (aliasMatch) {
+        const matched = players.find((player) => player.id === aliasMatch.playerId);
+        if (matched) return matched;
+    }
+
+    return players.find((player) =>
+        player.user.toLowerCase().includes(normalized) ||
+        player.platformUserHandle.toLowerCase().includes(normalized)
+    ) ?? null;
+}
+
 export async function getPlayerAliasHistory(playerId: string) {
     return db.select({
         namespace: bf6PlayerAliases.namespace,
@@ -35,6 +70,26 @@ export async function getPlayerAliasHistory(playerId: string) {
         .from(bf6PlayerAliases)
         .where(eq(bf6PlayerAliases.playerId, playerId))
         .orderBy(desc(bf6PlayerAliases.lastSeenAt));
+}
+
+export async function getPlayerAliasProfile(userInput: string) {
+    await getBF6Data();
+    const player = await resolveBF6Player(userInput);
+    if (!player) return null;
+
+    return {
+        player,
+        aliases: await getPlayerAliasHistory(player.id),
+    };
+}
+
+export async function getPlayerOverview(userInput: string) {
+    await getBF6Data();
+    const player = await resolveBF6Player(userInput);
+    if (!player) return null;
+
+    const latest = (await getLatestScrapes()).find((scrape) => scrape.id === player.id) ?? null;
+    return { player, latest };
 }
 
 /**
@@ -56,10 +111,24 @@ export const getLatestScrapes = async () => {
         profileUrl: bf6Players.profileUrl,
         status: bf6Players.status,
         kills: bf6Scrapes.kills,
+        aiKills: bf6Scrapes.aiKills,
         deaths: bf6Scrapes.deaths,
         revives: bf6Scrapes.revives,
+        wins: bf6Scrapes.wins,
+        losses: bf6Scrapes.losses,
+        matchesPlayed: bf6Scrapes.matchesPlayed,
+        damage: bf6Scrapes.damage,
+        shotsFired: bf6Scrapes.shotsFired,
+        shotsHit: bf6Scrapes.shotsHit,
+        killAssists: bf6Scrapes.killAssists,
+        heals: bf6Scrapes.heals,
+        resupplies: bf6Scrapes.resupplies,
+        repairs: bf6Scrapes.repairs,
+        squadmateRevives: bf6Scrapes.squadmateRevives,
+        enemiesSpotted: bf6Scrapes.enemiesSpotted,
         score: bf6Scrapes.score,
         careerPlayerRank: bf6Scrapes.careerPlayerRank,
+        source: bf6Scrapes.source,
         timePlayedDisplay: bf6Scrapes.timePlayedDisplay,
         timePlayedValue: bf6Scrapes.timePlayedValue,
         scrapedAt: bf6Scrapes.scrapedAt,
