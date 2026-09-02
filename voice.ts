@@ -1,5 +1,4 @@
 
-import googleTTS from "google-tts-api";
 import { randomUUID } from "crypto";
 import fs from "fs";
 
@@ -17,6 +16,7 @@ import {
 import { Message, Guild } from "discord.js";
 import { join, dirname, basename, isAbsolute, resolve, relative } from "path";
 import { fileURLToPath } from "url";
+import { getGoogleTTSUrls } from "./utils/googleTTS";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -227,23 +227,7 @@ export class GuildVoiceManager {
         const tempFile = join(__dirname, `./tts-${randomUUID()}.mp3`);
 
         try {
-            let urls: string[];
-            if (text.length > 200) {
-                const results = googleTTS.getAllAudioUrls(text, {
-                    lang,
-                    slow: false,
-                    host: "https://translate.google.com",
-                });
-                urls = results.map((r) => r.url);
-            } else {
-                urls = [
-                    googleTTS.getAudioUrl(text, {
-                        lang,
-                        slow: false,
-                        host: "https://translate.google.com",
-                    }),
-                ];
-            }
+            const urls = getGoogleTTSUrls(text, lang);
 
             let fullBuffer = Buffer.alloc(0);
             for (const url of urls) {
