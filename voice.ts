@@ -14,7 +14,6 @@ import {
     VoiceConnection,
     StreamType,
 } from "@discordjs/voice";
-import fetch from "node-fetch";
 import { Message, Guild } from "discord.js";
 import { join, dirname, basename, isAbsolute, resolve, relative } from "path";
 import { fileURLToPath } from "url";

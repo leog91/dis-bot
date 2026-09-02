@@ -1,6 +1,5 @@
 import { Message } from "discord.js";
 import { defineCommand } from "..";
-import fetch from "node-fetch";
 import sharp from "sharp";
 
 interface GeoResult {

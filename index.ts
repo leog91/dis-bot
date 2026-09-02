@@ -1,5 +1,4 @@
 import { Client, GatewayIntentBits } from "discord.js";
-import dotenv from "dotenv";
 import fs from "fs";
 import { join } from "path";
 import onMessage from "./events/messageCreate";
@@ -8,9 +7,6 @@ import onReady from "./events/ready";
 import { loadCommands } from "./commands/commandLoader";
 import onVoiceStateUpdate from "./events/voiceStateUpdate";
 import interactionCreate from "./events/interactionCreate";
-
-
-dotenv.config();
 
 const privateAssetsDir = process.env.ASSETS_PRIVATE_DIR;
 const privateCommandsDir = process.env.PRIVATE_COMMANDS_DIR;

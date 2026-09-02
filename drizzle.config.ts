@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import { defineConfig } from 'drizzle-kit';
 import { isAbsolute, resolve } from 'node:path';
 

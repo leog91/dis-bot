@@ -7,7 +7,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": ["node", "bun-types"],
+    "types": ["bun"],
     "baseUrl": ".",
     "paths": {
       "discord.js": ["node_modules/discord.js"],
