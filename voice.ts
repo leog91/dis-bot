@@ -22,6 +22,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const AUDIO_ROOT = join(__dirname, "assets", "audio");
+const TTS_FETCH_TIMEOUT_MS = 10_000;
 const PRIVATE_AUDIO_ROOT = process.env.ASSETS_PRIVATE_DIR
     ? join(process.env.ASSETS_PRIVATE_DIR, "audio")
     : null;
@@ -229,16 +230,21 @@ export class GuildVoiceManager {
         try {
             const urls = getGoogleTTSUrls(text, lang);
 
-            let fullBuffer = Buffer.alloc(0);
+            const buffers: Buffer[] = [];
             for (const url of urls) {
-                const res = await fetch(url);
+                const res = await fetch(url, {
+                    signal: AbortSignal.timeout(TTS_FETCH_TIMEOUT_MS),
+                });
                 if (!res.ok) {
                     throw new Error(`Failed to fetch TTS audio: ${res.status}`);
                 }
-                const buffer = Buffer.from(await res.arrayBuffer());
-                fullBuffer = Buffer.concat([fullBuffer, buffer]);
+                const contentType = res.headers.get("content-type");
+                if (!contentType?.toLowerCase().startsWith("audio/")) {
+                    throw new Error(`Unexpected TTS response type: ${contentType ?? "missing"}`);
+                }
+                buffers.push(Buffer.from(await res.arrayBuffer()));
             }
-            fs.writeFileSync(tempFile, fullBuffer);
+            fs.writeFileSync(tempFile, Buffer.concat(buffers));
             return tempFile;
         } catch (err: any) {
             console.error("TTS generation error:", err);
