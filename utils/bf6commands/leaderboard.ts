@@ -1,5 +1,6 @@
 import { getBF6Data, getProgressData } from "../bf6data";
-import { leaderboardStatusMarker } from "./format";
+import { loadPlayers } from "../bf6rank";
+import { buildIntggProfileUrl, leaderboardStatusMarker } from "./format";
 import type { BF6Handler } from "./constants";
 
 export const leaderboardHandler: BF6Handler = async (sub, msg, args, safeReply) => {
@@ -82,11 +83,19 @@ export const leaderboardHandler: BF6Handler = async (sub, msg, args, safeReply) 
                 .join("\n");
             break;
 
-        case "trackergg": {
+        case "social": {
             const current = await getBF6Data();
+            const configuredPlayers = new Map((await loadPlayers()).map((player) => [player.id, player]));
             sorted = [...current].sort((a, b) => b.timePlayedValue - a.timePlayedValue);
             content = sorted
-                .map((p) => `${leaderboardStatusMarker(p.status)}[${p.platformUserHandle}](${p.profileUrl})`)
+                .map((p) => {
+                    const intggProfileId = configuredPlayers.get(p.id)?.intggProfileId;
+                    const links = [`[Tracker.gg](<${p.profileUrl}>)`];
+                    if (intggProfileId) {
+                        links.push(`[INT.GG](<${buildIntggProfileUrl(p.platformUserHandle, intggProfileId)}>)`);
+                    }
+                    return `${leaderboardStatusMarker(p.status)}${p.platformUserHandle} - ${links.join(" | ")}`;
+                })
                 .join("\n");
             break;
         }

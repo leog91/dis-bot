@@ -47,7 +47,7 @@ const HANDLERS: Partial<Record<SubCommand, (msg: Message, args: string[], reply:
     stats: (m, a, r) => playerHandler("stats", m, a, r),
     teamplay: (m, a, r) => playerHandler("teamplay", m, a, r),
     ai: (m, a, r) => playerHandler("ai", m, a, r),
-    trackergg: (m, a, r) => leaderboardHandler("trackergg", m, a, r),
+    social: (m, a, r) => leaderboardHandler("social", m, a, r),
     playStyle: (m, a, r) => playStyleHandler("playStyle", m, a, r),
     rpg: (m, a, r) => itemsHandler("rpg", m, a, r),
     c4: (m, a, r) => itemsHandler("c4", m, a, r),

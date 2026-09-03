@@ -43,7 +43,7 @@ export const SUBCOMMANDS = [
     "playStyle",
     "bans",
     "refresh",
-    "trackergg",
+    "social",
     ...BF6_GADGET_COMMANDS,
     ...BF6_VEHICLE_COMMANDS,
     "class",
@@ -67,7 +67,7 @@ const SUBCOMMAND_HELP_CATEGORIES: readonly { title: string; commands: readonly S
     { title: "Aircraft", commands: ["falchion", "f61v", "kestrel", "panthera", "f39e", "su57", "seacat", "superspectre", "littlebird"] },
     { title: "Ground & Naval", commands: ["glider96", "m1a2", "strf09", "leo2a4", "cheetah", "bradley", "royalptv", "rugged", "traverser", "rhib", "vector", "tm450", "m1030", "ltv", "rcb90"] },
     { title: "Classes", commands: ["class", "assault", "engineer", "support", "recon"] },
-    { title: "Other", commands: ["aliases", "trackergg", "refresh", "bans"] },
+    { title: "Other", commands: ["aliases", "social", "refresh", "bans"] },
 ];
 
 export const SUBCOMMANDS_HELP = SUBCOMMAND_HELP_CATEGORIES
@@ -80,7 +80,7 @@ export const SUBCOMMAND_ALIASES: Partial<Record<SubCommand, string[]>> = {
     teamplay: ["teamwork"],
     ai: ["bots", "botkills"],
     aliases: ["alias", "names", "nicks", "nick"],
-    trackergg: ["tracker", "tg"],
+    social: ["trackergg", "tracker", "tg"],
     assault: ["aslt"],
     engineer: ["eng"],
     support: ["sup"],

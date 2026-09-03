@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { SUBCOMMANDS, SUBCOMMANDS_HELP, resolveSubcommand } from "../utils/bf6commands/constants";
-import { formatStatPercent, formatStatRate, formatStatRatio } from "../utils/bf6commands/format";
+import { buildIntggProfileUrl, formatStatPercent, formatStatRate, formatStatRatio } from "../utils/bf6commands/format";
 
 describe("BF6 command help", () => {
     it("lists every canonical subcommand exactly once", () => {
@@ -25,7 +25,9 @@ describe("BF6 player cards", () => {
         expect(resolveSubcommand("teamwork")).toBe("teamplay");
         expect(resolveSubcommand("bots")).toBe("ai");
         expect(resolveSubcommand("nicks")).toBe("aliases");
-        expect(resolveSubcommand("tracker")).toBe("trackergg");
+        expect(resolveSubcommand("social")).toBe("social");
+        expect(resolveSubcommand("trackergg")).toBe("social");
+        expect(resolveSubcommand("tracker")).toBe("social");
     });
 
     it("formats derived metrics without inventing unavailable values", () => {
@@ -38,5 +40,10 @@ describe("BF6 player cards", () => {
         expect(formatStatRate(60, 3600)).toBe("1.00");
         expect(formatStatRate(null, 3600)).toBe("-");
         expect(formatStatRate(10, 0)).toBe("-");
+    });
+
+    it("builds INT.GG profile links from the current handle and configured id", () => {
+        expect(buildIntggProfileUrl("Chupetin de Brea", "388814"))
+            .toBe("https://int.gg/bf6/player/Chupetin%20de%20Brea-388814");
     });
 });

@@ -8,6 +8,7 @@ export type Player = {
     userName: string;
     id: string;
     personaId?: string;
+    intggProfileId?: string;
     configuredAliases?: PlayerAlias[];
 };
 
@@ -21,6 +22,9 @@ export type PlayerConfig = {
     userName: string;
     ids: {
         tracker: {
+            profileId: string;
+        };
+        intgg?: {
             profileId: string;
         };
         ea: {

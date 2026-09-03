@@ -17,6 +17,10 @@ export function leaderboardStatusMarker(status: string): string {
     }
 }
 
+export function buildIntggProfileUrl(handle: string, profileId: string): string {
+    return `https://int.gg/bf6/player/${encodeURIComponent(handle)}-${profileId}`;
+}
+
 export function formatStatRatio(numerator: number, denominator: number): string {
     if (denominator === 0) return numerator > 0 ? "inf" : "0.00";
     return (numerator / denominator).toFixed(2);

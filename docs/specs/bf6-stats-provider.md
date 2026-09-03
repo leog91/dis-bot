@@ -61,6 +61,7 @@ Providers key players differently. The players config (`config/bf6players.json`,
   "userName": "K00ftt",
   "ids": {
     "tracker": { "profileId": "2851980846" },
+    "intgg": { "profileId": "123456" },
     "ea": { "personaId": "1115553730", "nucleusId": "2626883460" }
   },
   "nicks": {
@@ -72,6 +73,7 @@ Providers key players differently. The players config (`config/bf6players.json`,
 
 - `userName` is the stable local key used by bot commands.
 - `ids.tracker.profileId` is used by the tracker provider and profile URLs.
+- `ids.intgg.profileId` is optional and is used to build INT.GG profile links.
 - `ids.ea.personaId` is used by gametools; `nucleusId` records the EA account identity.
 - `ids.steam` records linked Steam identity IDs when known.
 - `nicks` records current and historical handles by source without using mutable handles
@@ -153,6 +155,8 @@ handle and advances `last_seen_at`; it never rewrites `bf6players.json`. Existin
 ## Leaderboard behavior
 
 - `bf6 ... rank`: players with a NULL rank display `Rank —`; sorts place NULLs last.
+- `bf6 social` lists clickable Tracker.gg and configured INT.GG profiles. The former
+  `trackergg`, `tracker`, and `tg` names remain aliases.
 - All other sorts (kills, revives, items, classes, playstyle) unaffected.
 
 ## Player cards

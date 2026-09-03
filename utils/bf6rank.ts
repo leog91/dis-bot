@@ -41,7 +41,7 @@ const fallbackPlayersConfigPath = process.env.ASSETS_PRIVATE_DIR
     : path.join(__dirname, "..", "config", "bf6players.json");
 const PLAYERS_CONFIG_PATH = process.env.BF6_PLAYERS_CONFIG_PATH ?? fallbackPlayersConfigPath;
 
-async function loadPlayers(): Promise<Player[]> {
+export async function loadPlayers(): Promise<Player[]> {
     try {
         const data = await fs.readFile(PLAYERS_CONFIG_PATH, "utf-8");
         const configs = JSON.parse(data) as PlayerConfig[];
@@ -49,6 +49,7 @@ async function loadPlayers(): Promise<Player[]> {
             userName: config.userName,
             id: config.ids.tracker.profileId,
             personaId: config.ids.ea.personaId,
+            intggProfileId: config.ids.intgg?.profileId,
             configuredAliases: (["tracker", "ea", "steam"] as const).flatMap((namespace) =>
                 (config.nicks[namespace] ?? []).map((handle) => ({ namespace, handle, source: "manual" as const }))),
         }));
