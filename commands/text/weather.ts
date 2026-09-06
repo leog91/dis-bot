@@ -1,6 +1,9 @@
 import { Message } from "discord.js";
 import { defineCommand } from "..";
 import sharp from "sharp";
+import { db } from "../../db";
+import { weatherPreferences } from "../../db/schema";
+import { eq } from "drizzle-orm";
 
 interface GeoResult {
     latitude: number;
@@ -57,14 +60,33 @@ const forecastCache = new Map<string, CacheEntry<WeatherResponse>>();
 
 export default defineCommand({
     name: "weather",
-    description: "Compare weather for comma-separated cities",
+    description: "Show weather for cities and manage your default city",
     type: "TEXT",
 
     async execute(msg: Message, args: string[]) {
-        const cities = parseCities(args);
-        if (cities.length === 0) {
-            await msg.reply("Usage: `weather city, city COUNTRY_CODE, city`");
+        if (args[0]?.toLowerCase() === "set") {
+            await setDefaultCity(msg, args.slice(1));
             return;
+        }
+
+        const mentionedUser = args.length === 1 ? msg.mentions.users.first() : undefined;
+        let cities = mentionedUser ? [] : parseCities(args);
+        if (cities.length === 0) {
+            try {
+                const preference = await getDefaultCity(mentionedUser?.id ?? msg.author.id);
+
+                if (!preference) {
+                    await msg.reply(mentionedUser
+                        ? `${mentionedUser} hasn't configured a default weather city.`
+                        : "Set your default city with: `weather set city`");
+                    return;
+                }
+
+                cities = [preference];
+            } catch {
+                await msg.reply("I couldn't read your default weather city.");
+                return;
+            }
         }
         if (cities.length > MAX_CITIES) {
             await msg.reply(`Please compare at most ${MAX_CITIES} cities at once.`);
@@ -110,7 +132,6 @@ export default defineCommand({
 
             const card = await renderWeatherCard(results);
             await msg.reply({
-                content: "**Weather forecast**",
                 files: [{ attachment: card, name: "weather-forecast.png" }]
             });
         } catch {
@@ -118,6 +139,42 @@ export default defineCommand({
         }
     }
 });
+
+async function getDefaultCity(userId: string): Promise<string | undefined> {
+    const preference = await db.select()
+        .from(weatherPreferences)
+        .where(eq(weatherPreferences.userId, userId))
+        .get();
+    return preference?.city;
+}
+
+async function setDefaultCity(msg: Message, args: string[]): Promise<void> {
+    const query = args.join(" ").trim();
+    if (!query) {
+        await msg.reply("Usage: `weather set city`");
+        return;
+    }
+
+    try {
+        const location = await resolveLocation(query);
+        if (!location) {
+            await msg.reply(`I couldn't find a city matching "${query}".`);
+            return;
+        }
+
+        const city = `${location.name} ${location.country_code}`;
+        await db.insert(weatherPreferences)
+            .values({ userId: msg.author.id, city })
+            .onConflictDoUpdate({
+                target: weatherPreferences.userId,
+                set: { city }
+            });
+
+        await msg.reply(`Your default weather city is now **${location.name}, ${location.country_code}**.`);
+    } catch {
+        await msg.reply("I couldn't save your default weather city.");
+    }
+}
 
 function parseCities(args: string[]): string[] {
     return args.join(" ").split(",").map(city => city.trim()).filter(Boolean);

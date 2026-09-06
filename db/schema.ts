@@ -128,3 +128,8 @@ export const pins = sqliteTable('pins', {
     isArchived: integer('is_archived', { mode: 'boolean' }).notNull().default(false),
     userId: text('user_id').notNull(),
 });
+
+export const weatherPreferences = sqliteTable('weather_preferences', {
+    userId: text('user_id').primaryKey(),
+    city: text('city').notNull(),
+});
