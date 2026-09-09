@@ -5,6 +5,7 @@ import {
     deleteOriginalMessage,
     getVidSourceInfo,
     resolveVidOutputUrl,
+    trySendInstagramVideo,
     trySendRedditVideo,
     trySendTwitterVideo,
     type VidProgressMessage,
@@ -94,6 +95,21 @@ export default defineCommand({
 
         try {
             const sourceInfo = getVidSourceInfo(url);
+
+            if (sourceInfo.isInstagramLike) {
+                progress = await createVidProgressMessage(msg, "Preparing Instagram video...");
+                const instagramResult = await trySendInstagramVideo(msg, url, progress);
+                if (instagramResult.sent) {
+                    return;
+                }
+
+                const notice = "notice" in instagramResult && instagramResult.notice
+                    ? instagramResult.notice
+                    : "No pude descargar este video de Instagram.";
+                await progress.update(`${notice}\n[Original](<${url}>)`);
+                return;
+            }
+
             const outputUrl = await resolveVidOutputUrl(url, sourceInfo);
 
             const linkContent = sourceInfo.isTwitterLike

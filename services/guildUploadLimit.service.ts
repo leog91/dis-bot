@@ -2,7 +2,7 @@ import type { Guild } from "discord.js";
 
 const MB = 1024 * 1024;
 
-export const DEFAULT_DISCORD_UPLOAD_LIMIT_BYTES = 10 * MB;
+export const DEFAULT_DISCORD_UPLOAD_LIMIT_BYTES = 20 * MB;
 
 export type GuildUploadLimitInfo = {
     guildId: string;

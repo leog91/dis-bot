@@ -218,10 +218,14 @@ const runYtDlpGetUrl = async (url: string, attempt: YtDlpAttempt = {}) => {
     }
 };
 
-const runYtDlpDownload = async (url: string, outputTemplate: string) => {
+const runYtDlpDownload = async (
+    url: string,
+    outputTemplate: string,
+    attempt: YtDlpAttempt = {}
+) => {
     const cmd = [
         ytdlpBinary,
-        "-f", "bv*+ba/b",
+        "-f", attempt.format ?? "bv*+ba/b",
         "--merge-output-format", "mp4",
         "--no-warnings",
         "--extractor-retries", "3",
@@ -232,6 +236,10 @@ const runYtDlpDownload = async (url: string, outputTemplate: string) => {
 
     if (ffmpegBinary) {
         cmd.push("--ffmpeg-location", ffmpegBinary);
+    }
+
+    if (attempt.extractorArg) {
+        cmd.push("--extractor-args", attempt.extractorArg);
     }
 
     cmd.push(url);
@@ -259,19 +267,36 @@ const findDownloadedFile = async (directory: string, prefix: string) => {
     return path.join(directory, matchingFiles[0]);
 };
 
-const validateShortenedUrl = async (shortUrl: string): Promise<boolean> => {
+const removeDownloadedFiles = async (directory: string, prefix: string) => {
+    const entries = await fs.readdir(directory).catch(() => []);
+    await Promise.all(
+        entries
+            .filter((entry) => entry.startsWith(prefix))
+            .map((entry) => fs.unlink(path.join(directory, entry)).catch(() => {}))
+    );
+};
+
+const validateShortenedUrl = async (shortUrl: string, expectedUrl: string): Promise<boolean> => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
     try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
         const res = await fetch(shortUrl, {
             method: "HEAD",
             signal: controller.signal,
             redirect: "manual",
         });
-        clearTimeout(timeout);
-        return res.status < 500;
+        const location = res.headers.get("location");
+
+        if (res.status < 300 || res.status >= 400 || !location) {
+            return false;
+        }
+
+        return new URL(location, shortUrl).href === new URL(expectedUrl).href;
     } catch {
         return false;
+    } finally {
+        clearTimeout(timeout);
     }
 };
 
@@ -283,7 +308,7 @@ const tryShortenWith = async (apiUrl: string, expectedHostname: string, url: str
         if (text && text.toLowerCase().startsWith("http")) {
             const parsed = new URL(text);
             if (parsed.hostname === expectedHostname && text.length < url.length) {
-                const isValid = await validateShortenedUrl(text);
+                const isValid = await validateShortenedUrl(text, url);
                 if (isValid) return text;
                 console.error(`${expectedHostname} returned invalid short URL:`, text);
             }
@@ -296,7 +321,7 @@ const tryShortenWith = async (apiUrl: string, expectedHostname: string, url: str
     return null;
 };
 
-const getShorterUrlIfAvailable = async (url: string) => {
+export const getShorterVidUrlIfAvailable = async (url: string) => {
     const isGd = await tryShortenWith(
         `https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`,
         "is.gd",
@@ -304,12 +329,12 @@ const getShorterUrlIfAvailable = async (url: string) => {
     );
     if (isGd) return isGd;
 
-    const tinyUrl = await tryShortenWith(
-        `https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`,
-        "tinyurl.com",
+    const vGd = await tryShortenWith(
+        `https://v.gd/create.php?format=simple&url=${encodeURIComponent(url)}`,
+        "v.gd",
         url
     );
-    if (tinyUrl) return tinyUrl;
+    if (vGd) return vGd;
 
     return url;
 };
@@ -484,29 +509,54 @@ export const trySendRedditVideo = async (
     }
 };
 
-export const trySendTwitterVideo = async (
+const trySendLinkedVideo = async (
     msg: Message,
     url: string,
+    source: "Instagram" | "Twitter",
+    linkLabel: string,
     progress?: VidProgressMessage
 ): Promise<RedditVideoResult> => {
     const tempDir = path.resolve(process.cwd(), "temp");
-    const filePrefix = `twitter-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const filePrefix = `${source.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const outputTemplate = path.join(tempDir, `${filePrefix}.%(ext)s`);
     const uploadLimitBytes = getUploadLimitBytes(msg);
 
-    await progress?.update("Downloading Twitter video...");
+    await progress?.update(`Downloading ${source} video...`);
     await fs.mkdir(tempDir, { recursive: true });
 
-    const result = await runYtDlpDownload(url, outputTemplate);
-    const downloadedFile = await findDownloadedFile(tempDir, filePrefix);
+    const downloadAttempts: YtDlpAttempt[] = source === "Instagram"
+        ? [
+            {},
+            { format: "b", extractorArg: "instagram:app_id=web" },
+            { format: "b", extractorArg: "instagram:app_id=ios" },
+            { format: "best", extractorArg: "instagram:app_id=web" },
+            { format: "best", extractorArg: "instagram:app_id=ios" },
+        ]
+        : [{}];
+    let downloadedFile = "";
+    let lastError = "";
 
-    if (result.exitCode !== 0 || !downloadedFile) {
-        if (downloadedFile) {
-            await fs.unlink(downloadedFile).catch(() => {});
+    for (const attempt of downloadAttempts) {
+        const result = await runYtDlpDownload(url, outputTemplate, attempt);
+        downloadedFile = await findDownloadedFile(tempDir, filePrefix);
+
+        if (result.exitCode === 0 && downloadedFile) {
+            break;
         }
 
-        console.error(result.stderrText || `yt-dlp exited with code ${result.exitCode}`);
-        return { sent: false };
+        lastError = result.stderrText || `yt-dlp exited with code ${result.exitCode}`;
+        await removeDownloadedFiles(tempDir, filePrefix);
+        downloadedFile = "";
+    }
+
+    if (!downloadedFile) {
+        console.error(lastError);
+        return {
+            sent: false,
+            notice: source === "Instagram"
+                ? "No pude descargar este video de Instagram. Puede ser privado o requerir iniciar sesión."
+                : undefined,
+        };
     }
 
     let fileToUpload = downloadedFile;
@@ -525,9 +575,12 @@ export const trySendTwitterVideo = async (
 
         if (fileStat.size > uploadLimitBytes) {
             console.error(
-                `Twitter video is too large to upload: ${fileToUpload} (${formatMb(fileStat.size)})`
+                `${source} video is too large to upload: ${fileToUpload} (${formatMb(fileStat.size)})`
             );
-            return { sent: false };
+            return {
+                sent: false,
+                notice: `No puedo subir el video porque pesa ${formatMb(fileStat.size)}.`,
+            };
         }
 
         const fileBuffer = await fs.readFile(fileToUpload);
@@ -536,7 +589,7 @@ export const trySendTwitterVideo = async (
         await progress?.update("Uploading video...");
         await channel.send(`by ${msg.author}:`);
         await channel.send({
-            content: `[Tweet](<${url}>)`,
+            content: `[${linkLabel}](<${url}>)`,
             files: [{
                 attachment: fileBuffer,
                 name: path.basename(fileToUpload),
@@ -553,6 +606,18 @@ export const trySendTwitterVideo = async (
         }
     }
 };
+
+export const trySendInstagramVideo = (
+    msg: Message,
+    url: string,
+    progress?: VidProgressMessage
+) => trySendLinkedVideo(msg, url, "Instagram", "Original", progress);
+
+export const trySendTwitterVideo = (
+    msg: Message,
+    url: string,
+    progress?: VidProgressMessage
+) => trySendLinkedVideo(msg, url, "Twitter", "Tweet", progress);
 
 export const resolveVidOutputUrl = async (url: string, sourceInfo: VidSourceInfo) => {
     const attempts = buildAttempts(sourceInfo);
@@ -573,5 +638,5 @@ export const resolveVidOutputUrl = async (url: string, sourceInfo: VidSourceInfo
         directUrl = url;
     }
 
-    return getShorterUrlIfAvailable(directUrl);
+    return getShorterVidUrlIfAvailable(directUrl);
 };
