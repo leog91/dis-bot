@@ -11,7 +11,9 @@ import {
     AudioResource,
     AudioPlayerStatus,
     VoiceConnection,
+    VoiceConnectionStatus,
     StreamType,
+    entersState,
 } from "@discordjs/voice";
 import { Message, Guild } from "discord.js";
 import { join, dirname, basename, isAbsolute, resolve, relative } from "path";
@@ -23,6 +25,7 @@ const __dirname = dirname(__filename);
 
 const AUDIO_ROOT = join(__dirname, "assets", "audio");
 const TTS_FETCH_TIMEOUT_MS = 10_000;
+const VOICE_CONNECTION_TIMEOUT_MS = 10_000;
 const PRIVATE_AUDIO_ROOT = process.env.ASSETS_PRIVATE_DIR
     ? join(process.env.ASSETS_PRIVATE_DIR, "audio")
     : null;
@@ -171,12 +174,39 @@ export class GuildVoiceManager {
 
     // Ensure connection + player exist for a specific channel
     async ensureConnection(channelId: string, adapterCreator: any): Promise<AudioPlayer> {
+        if (this.connection?.state.status === VoiceConnectionStatus.Destroyed) {
+            this.connection = null;
+        }
+
         if (!this.connection) {
             this.connection = joinVoiceChannel({
                 channelId,
                 guildId: this.guildId,
                 adapterCreator,
             });
+        }
+
+        try {
+            await entersState(
+                this.connection,
+                VoiceConnectionStatus.Ready,
+                VOICE_CONNECTION_TIMEOUT_MS,
+            );
+        } catch {
+            if (this.connection.state.status !== VoiceConnectionStatus.Destroyed) {
+                this.connection.destroy();
+            }
+            console.warn(`[voice] Recreating stale connection for guild ${this.guildId}`);
+            this.connection = joinVoiceChannel({
+                channelId,
+                guildId: this.guildId,
+                adapterCreator,
+            });
+            await entersState(
+                this.connection,
+                VoiceConnectionStatus.Ready,
+                VOICE_CONNECTION_TIMEOUT_MS,
+            );
         }
 
         if (!this.player) {
@@ -199,8 +229,9 @@ export class GuildVoiceManager {
                     this.playResource(nextFile);
                 }
             });
-            this.connection.subscribe(this.player);
         }
+
+        this.connection.subscribe(this.player);
 
         return this.player;
     }
@@ -309,18 +340,7 @@ export class GuildVoiceManager {
         const channel = msg.member?.voice.channel;
         if (!channel) return msg.reply("❌ You must be in a voice channel.");
 
-        if (!this.connection) {
-            this.connection = joinVoiceChannel({
-                channelId: channel.id,
-                guildId: this.guildId,
-                adapterCreator: msg.guild!.voiceAdapterCreator as any,
-            });
-        }
-
-        if (!this.player) {
-            this.player = createAudioPlayer();
-            this.connection.subscribe(this.player);
-        }
+        await this.ensureConnection(channel.id, msg.guild!.voiceAdapterCreator as any);
 
         msg.reply(`🔊 Joined **${channel.name}**.`);
     }

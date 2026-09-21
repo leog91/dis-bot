@@ -110,6 +110,26 @@ export default defineCommand({
                 return;
             }
 
+            if (sourceInfo.isRedditLike) {
+                progress = await createVidProgressMessage(msg, "Preparing Reddit video...");
+                const redditResult = await trySendRedditVideo(msg, url, progress);
+                if (redditResult.sent) {
+                    return;
+                }
+
+                await progress.remove();
+                progress = undefined;
+
+                const outputUrl = await resolveVidOutputUrl(url, sourceInfo);
+                const notice = "notice" in redditResult && redditResult.notice
+                    ? `${redditResult.notice}\n`
+                    : "";
+                await msg.channel.send(
+                    `${notice}by ${msg.author}:\n[Original](<${url}>)\n${outputUrl}`
+                );
+                return;
+            }
+
             const outputUrl = await resolveVidOutputUrl(url, sourceInfo);
 
             const linkContent = sourceInfo.isTwitterLike
@@ -122,21 +142,6 @@ export default defineCommand({
                 ? await waitForEmbed(linkMessage, isAnyEmbed)
                 : await waitForEmbed(linkMessage, isVideoEmbed);
             if (hasPreview) {
-                return;
-            }
-
-            if (sourceInfo.isRedditLike) {
-                progress = await createVidProgressMessage(msg, "Preparing Reddit video...");
-                const redditResult = await trySendRedditVideo(msg, url, progress);
-                if (redditResult.sent) {
-                    await linkMessage.delete().catch(() => {});
-                    return;
-                }
-
-                await progress?.remove();
-                if ("notice" in redditResult && redditResult.notice) {
-                    await msg.channel.send(redditResult.notice);
-                }
                 return;
             }
 

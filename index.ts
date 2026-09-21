@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits } from "discord.js";
+import { ActivityType, Client, GatewayIntentBits } from "discord.js";
 import fs from "fs";
 import { join } from "path";
 import onMessage from "./events/messageCreate";
@@ -35,6 +35,10 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildVoiceStates,
     ],
+    presence: {
+        activities: [{ name: ">> aiuda", type: ActivityType.Listening }],
+        status: "invisible",
+    },
 });
 
 
@@ -64,6 +68,18 @@ let commands: Map<string, any>;
     client.on("clientReady", () => onReady(client));
     client.on("voiceStateUpdate", (oldState, newState) => onVoiceStateUpdate(oldState, newState));
     client.on("interactionCreate", interactionCreate);
+    client.on("shardReconnecting", (shardId) => {
+        console.warn(`[discord] Shard ${shardId} reconnecting`);
+    });
+    client.on("shardResume", (shardId, replayedEvents) => {
+        console.log(`[discord] Shard ${shardId} resumed; replayed ${replayedEvents} event(s)`);
+    });
+    client.on("shardError", (error, shardId) => {
+        console.error(`[discord] Shard ${shardId} error:`, error);
+    });
+    client.on("shardDisconnect", (event, shardId) => {
+        console.error(`[discord] Shard ${shardId} disconnected with code ${event.code}`);
+    });
 
 
 

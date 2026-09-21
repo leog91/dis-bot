@@ -492,6 +492,7 @@ export const trySendRedditVideo = async (
         await progress?.update("Uploading video...");
         await channel.send(`by ${msg.author}:`);
         await channel.send({
+            content: `[Original](<${url}>)`,
             files: [{
                 attachment: fileBuffer,
                 name: path.basename(fileToUpload),

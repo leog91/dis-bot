@@ -8,13 +8,6 @@ export default async function onReady(client: Client) {
     console.log(`🤖 Logged in as ${client.user?.tag}`);
 
 
-    client.user?.setPresence({
-        activities: [
-            { name: ">> aiuda", type: 2 } // Listening
-        ],
-        status: "invisible"
-    });
-
     // Pre-fetch guilds to speed up later operations
     await client.guilds.fetch().catch((error) => {
         console.error("Failed to fetch guilds:", error);
