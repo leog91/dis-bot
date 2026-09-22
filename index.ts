@@ -7,9 +7,11 @@ import onReady from "./events/ready";
 import { loadCommands } from "./commands/commandLoader";
 import onVoiceStateUpdate from "./events/voiceStateUpdate";
 import interactionCreate from "./events/interactionCreate";
+import { TerminalDashboard } from "./utils/terminalDashboard";
 
 const privateAssetsDir = process.env.ASSETS_PRIVATE_DIR;
 const privateCommandsDir = process.env.PRIVATE_COMMANDS_DIR;
+const dashboardRequested = process.argv.includes("--dashboard");
 
 if (privateAssetsDir) {
     if (!fs.existsSync(privateAssetsDir)) {
@@ -41,6 +43,15 @@ const client = new Client({
     },
 });
 
+const dashboard = new TerminalDashboard();
+if (dashboardRequested) {
+    if (process.stdout.isTTY) {
+        dashboard.start(client);
+    } else {
+        console.warn("[dashboard] Interactive terminal not detected; using regular logs");
+    }
+}
+
 
 
 // extend the client at runtime (safe in JS/Bun)
@@ -65,7 +76,7 @@ let commands: Map<string, any>;
     client.commands = commands;
     client.on("messageCreate", (msg) => onMessage(msg, commands));
     client.on("messageDelete", onMessageDelete);
-    client.on("clientReady", () => onReady(client));
+    client.on("clientReady", () => onReady(client, !dashboard.isActive));
     client.on("voiceStateUpdate", (oldState, newState) => onVoiceStateUpdate(oldState, newState));
     client.on("interactionCreate", interactionCreate);
     client.on("shardReconnecting", (shardId) => {

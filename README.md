@@ -61,6 +61,16 @@ when `ASSETS_PRIVATE_DIR` is set.
 bun run dev
 ```
 
+For an interactive terminal view with connected voice members, memory usage, uptime, and
+recent logs, run:
+
+```
+bun run dashboard
+```
+
+The dashboard requires an interactive terminal. Regular startup and redirected output keep
+using the normal scrolling logs.
+
 On startup, Drizzle migrations are applied automatically to the configured `DB_FILE_PATH`.
 You can also run them manually:
 

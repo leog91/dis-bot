@@ -12,6 +12,7 @@
     "typecheck": "bunx --bun tsc -p tsconfig.private.json",
     "typecheck:private": "bunx --bun tsc -p tsconfig.private.json",
     "start": "bun index.ts",
+    "dashboard": "bun index.ts --dashboard",
     "test": "bun test"
   },
   "keywords": [],
