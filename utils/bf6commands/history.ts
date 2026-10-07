@@ -6,6 +6,7 @@ import {
 } from "../bf6data";
 import { statusMarker } from "./format";
 import type { BF6Handler } from "./constants";
+import { replyMonthlyHistory } from "./historyReply";
 
 export const historyHandler: BF6Handler = async (_sub, _msg, args, safeReply) => {
     const arg1 = args[1];
@@ -18,25 +19,7 @@ export const historyHandler: BF6Handler = async (_sub, _msg, args, safeReply) =>
             return;
         }
 
-        const statusWidth = 9;
-        const rows = months.map((m) => {
-            const kd = (m.kdRatio / 100).toFixed(2);
-            const statusLabel = m.status === "baseline" ? "baseline" : "";
-            return `${m.month} | ${m.timePlayedDisplay.padEnd(9)} | ${String(m.kills).padStart(7)} | ${String(m.deaths).padStart(7)} | ${kd.padStart(5)} | ${statusLabel.padEnd(statusWidth)}`;
-        });
-
-        const baselineNote = months.some((m) => m.status === "baseline")
-            ? "\n*baseline = totals when tracking started*"
-            : "";
-
-        await safeReply(
-            ` **BF6 Monthly History**\n` +
-            "```text\n" +
-            `month   | time      |  kills  | deaths |   k/d | ${"status".padEnd(statusWidth)}\n` +
-            rows.join("\n") +
-            "\n```" +
-            baselineNote
-        );
+        await replyMonthlyHistory("BF6 Monthly History", months, safeReply);
         return;
     }
 
@@ -143,9 +126,10 @@ export const historyHandler: BF6Handler = async (_sub, _msg, args, safeReply) =>
         return;
     }
 
-    const playerHistory = await getPlayerMonthlyHistory(arg1);
+    const playerArg = args.slice(1).join(" ").trim();
+    const playerHistory = await getPlayerMonthlyHistory(playerArg);
     if (!playerHistory) {
-        await safeReply(`No BF6 player found for "${arg1}".`);
+        await safeReply(`No BF6 player found for "${playerArg}".`);
         return;
     }
 
@@ -154,28 +138,5 @@ export const historyHandler: BF6Handler = async (_sub, _msg, args, safeReply) =>
         return;
     }
 
-    const statusWidth = 9;
-    const rows = playerHistory.months.map((m) => {
-        const kd = (m.kdRatio / 100).toFixed(2);
-        const statusLabel = m.status === "baseline" ? "baseline" : m.status === "resumed" ? "🔓 resumed" : "";
-        return `${m.month} | ${m.timePlayedDisplay.padEnd(9)} | ${String(m.kills).padStart(7)} | ${String(m.deaths).padStart(7)} | ${kd.padStart(5)} | ${statusLabel.padEnd(statusWidth)}`;
-    });
-
-    const notes: string[] = [];
-    if (playerHistory.months.some((m) => m.status === "baseline")) {
-        notes.push("baseline = totals when tracking started");
-    }
-    if (playerHistory.months.some((m) => m.status === "resumed")) {
-        notes.push("🔓 resumed = catch-up stats after a private/missing period");
-    }
-    const noteText = notes.length > 0 ? "\n*" + notes.join(" | ") + "*" : "";
-
-    await safeReply(
-        ` **${playerHistory.player.platformUserHandle} - Monthly History**\n` +
-        "```text\n" +
-        `month   | time      |  kills  | deaths |   k/d | ${"status".padEnd(statusWidth)}\n` +
-        rows.join("\n") +
-        "\n```" +
-        noteText
-    );
+    await replyMonthlyHistory(`${playerHistory.player.platformUserHandle} - Monthly History`, playerHistory.months, safeReply);
 };

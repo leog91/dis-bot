@@ -6,6 +6,7 @@ import {
     isVehicleSubcommand,
     resolveSubcommand,
     type SubCommand,
+    type SafeReply,
 } from "../../utils/bf6commands/constants";
 import {
     leaderboardHandler,
@@ -17,7 +18,7 @@ import {
     playerHandler,
 } from "../../utils/bf6commands";
 
-async function safeReply(msg: Message, content: string): Promise<Message | void> {
+async function safeReply(msg: Message, content: Parameters<SafeReply>[0]): Promise<Message | void> {
     try {
         return await msg.reply(content);
     } catch (err) {
@@ -37,7 +38,7 @@ async function safeReply(msg: Message, content: string): Promise<Message | void>
     }
 }
 
-const HANDLERS: Partial<Record<SubCommand, (msg: Message, args: string[], reply: (content: string) => Promise<Message | void>) => Promise<void>>> = {
+const HANDLERS: Partial<Record<SubCommand, (msg: Message, args: string[], reply: SafeReply) => Promise<void>>> = {
     kills: (m, a, r) => leaderboardHandler("kills", m, a, r),
     deaths: (m, a, r) => leaderboardHandler("deaths", m, a, r),
     revives: (m, a, r) => leaderboardHandler("revives", m, a, r),
@@ -93,7 +94,7 @@ export default defineCommand({
 
         try {
             const handler = HANDLERS[sub] ?? (isGadgetSubcommand(sub) || isVehicleSubcommand(sub)
-                ? (m: Message, a: string[], r: (content: string) => Promise<Message | void>) => itemsHandler(sub, m, a, r)
+                ? (m: Message, a: string[], r: SafeReply) => itemsHandler(sub, m, a, r)
                 : undefined);
             if (!handler) {
                 await safeReply(msg, `Unknown subcommand. Available:\n\n${SUBCOMMANDS_HELP}`);

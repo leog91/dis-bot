@@ -1,4 +1,4 @@
-import { Message } from "discord.js";
+import { Message, type MessageReplyOptions } from "discord.js";
 import { users } from "../../../dis-bot-assets-private/utils/constants";
 import { BF6ItemLeaderboardKey } from "../bf6data";
 import {
@@ -21,7 +21,7 @@ import {
 export const REFRESH_OWNER_ID = users.leog;
 // ==========================================
 
-export type SafeReply = (content: string) => Promise<Message | void>;
+export type SafeReply = (content: string | MessageReplyOptions) => Promise<Message | void>;
 
 export type BF6Handler = (
     sub: SubCommand,
