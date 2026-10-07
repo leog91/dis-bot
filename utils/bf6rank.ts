@@ -8,6 +8,9 @@ import { BF6_GADGETS, BF6_GADGET_BY_KEY, gadgetSegmentMatches, type BF6GadgetSna
 import { BF6_VEHICLES, vehicleSegmentMatches, type BF6VehicleSnapshotKey } from "./bf6vehicles";
 import { getBF6Provider } from "./bf6providers";
 import { BF6_REQUEST_TIMEOUT_MS } from "./bf6providers/types";
+import { normalizeBF6AliasHandle } from "./bf6identity";
+import { refreshPlayerAliases } from "./bf6aliasStore";
+export { normalizeBF6AliasHandle } from "./bf6identity";
 import type {
     BF6ClassKey,
     BF6ClassSnapshot,
@@ -49,6 +52,8 @@ export async function loadPlayers(): Promise<Player[]> {
             userName: config.userName,
             id: config.ids.tracker.profileId,
             personaId: config.ids.ea.personaId,
+            nucleusId: config.ids.ea.nucleusId,
+            steamId64: config.ids.steam?.steamId64,
             intggProfileId: config.ids.intgg?.profileId,
             configuredAliases: (["tracker", "ea", "steam"] as const).flatMap((namespace) =>
                 (config.nicks[namespace] ?? []).map((handle) => ({ namespace, handle, source: "manual" as const }))),
@@ -97,10 +102,6 @@ async function fetchPlayers(
 
     await Promise.all(Array.from({ length: concurrency }, () => worker()));
     return results;
-}
-
-export function normalizeBF6AliasHandle(handle: string): string {
-    return handle.trim().toLowerCase();
 }
 
 export function normalizeKey(value: string): string {
@@ -397,8 +398,7 @@ async function runBf6DataUpdate() {
     }
 
     if (results.length === 0) {
-        console.error("❌ No data fetched successfully. Aborting save.");
-        return [];
+        console.error("❌ No stats fetched successfully. Updating available identities only.");
     }
 
     results.sort((a, b) => b.kills - a.kills);
@@ -581,6 +581,15 @@ async function runBf6DataUpdate() {
                     }))
                 );
             }
+        }
+        // Identity collection is independent of stats availability/provider. Keep old names forever.
+        for (let start = 0; start < players.length; start += 3) {
+            const batch = players.slice(start, start + 3);
+            await Promise.all(batch.map(async player => {
+                const existing = await db.select({ id: bf6Players.id }).from(bf6Players).where(eq(bf6Players.id, player.id)).get();
+                if (!existing) return;
+                await refreshPlayerAliases(player, true);
+            }));
         }
         console.log("✅ Database updated.");
     } catch (error) {

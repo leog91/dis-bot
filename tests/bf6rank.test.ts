@@ -17,8 +17,8 @@ import {
 
 describe("normalizeBF6AliasHandle", () => {
     it("normalizes aliases case-insensitively while preserving punctuation", () => {
-        expect(normalizeBF6AliasHandle("  SharpVertexXx ")).toBe("sharpvertexxx");
-        expect(normalizeBF6AliasHandle("ByteS-«Master Mind»")).toBe("bytes-«master mind»");
+        expect(normalizeBF6AliasHandle("  PlayerOneEA ")).toBe("playeroneea");
+        expect(normalizeBF6AliasHandle("Player-«Example Name»")).toBe("player-«example name»");
     });
 });
 

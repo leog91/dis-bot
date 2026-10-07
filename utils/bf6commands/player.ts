@@ -49,10 +49,17 @@ async function aliasesCard(userArg: string, safeReply: Parameters<BF6Handler>[3]
         return [`${namespace.toUpperCase()}\n${lines.join("\n")}`];
     });
 
-    await safeReply(
-        ` **${profile.player.platformUserHandle}${statusMarker(profile.player.status)} - Alias History**\n` +
-        "```text\n" + sections.join("\n\n") + "\n```"
-    );
+    const title = ` **${profile.player.platformUserHandle}${statusMarker(profile.player.status)} - Alias History**\n`;
+    const note = "\n*Dates reflect bot observations, including Steam's recent-name list, not actual name-change dates.*";
+    let lines: string[] = [];
+    for (const line of sections.join("\n\n").split("\n")) {
+        if ((title + "```text\n" + [...lines, line].join("\n") + "\n```" + note).length > 1900 && lines.length) {
+            await safeReply(title + "```text\n" + lines.join("\n") + "\n```" + note);
+            lines = [];
+        }
+        lines.push(line);
+    }
+    if (lines.length) await safeReply(title + "```text\n" + lines.join("\n") + "\n```" + note);
 }
 
 export const playerHandler: BF6Handler = async (sub, _msg, args, safeReply) => {

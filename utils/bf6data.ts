@@ -1,9 +1,11 @@
 import { db } from "../db/index";
 import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6PlayerAliases, bf6WeaponPlaystyles, bf6ClassSnapshots, type BF6PlayerStatus } from "../db/schema";
 import { desc, eq, sql, and, lt, gt, lte, gte } from "drizzle-orm";
-import { PlayerRank, updateBf6Data } from "./bf6rank";
+import { PlayerRank, updateBf6Data, loadPlayers } from "./bf6rank";
 import type { BF6GadgetSnapshotKey } from "./bf6gadgets";
 import type { BF6VehicleSnapshotKey } from "./bf6vehicles";
+import { matchBF6Player, normalizeBF6AliasHandle } from "./bf6identity";
+import { refreshPlayerAliases } from "./bf6aliasStore";
 
 // ================= CONFIG =================
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
@@ -36,27 +38,16 @@ async function resolveBF6Player(userInput: string) {
         status: bf6Players.status,
     }).from(bf6Players);
 
-    const exact = players.find((player) =>
-        player.id.toLowerCase() === normalized ||
-        player.user.toLowerCase() === normalized ||
-        player.platformUserHandle.toLowerCase() === normalized
-    );
-    if (exact) return exact;
-
     const aliases = await db.select({
         playerId: bf6PlayerAliases.playerId,
         normalizedHandle: bf6PlayerAliases.normalizedHandle,
     }).from(bf6PlayerAliases);
-    const aliasMatch = aliases.find((alias) => alias.normalizedHandle === normalized);
-    if (aliasMatch) {
-        const matched = players.find((player) => player.id === aliasMatch.playerId);
-        if (matched) return matched;
-    }
-
-    return players.find((player) =>
-        player.user.toLowerCase().includes(normalized) ||
-        player.platformUserHandle.toLowerCase().includes(normalized)
-    ) ?? null;
+    const configured = await loadPlayers();
+    const configuredAliases = configured.flatMap(player => (player.configuredAliases ?? []).map(alias => ({
+        playerId: player.id,
+        normalizedHandle: normalizeBF6AliasHandle(alias.handle),
+    })));
+    return matchBF6Player(normalized, players, [...aliases, ...configuredAliases]);
 }
 
 export async function getPlayerAliasHistory(playerId: string) {
@@ -73,9 +64,21 @@ export async function getPlayerAliasHistory(playerId: string) {
 }
 
 export async function getPlayerAliasProfile(userInput: string) {
-    await getBF6Data();
-    const player = await resolveBF6Player(userInput);
+    let player = await resolveBF6Player(userInput);
+    if (!player) {
+        await getBF6Data();
+        player = await resolveBF6Player(userInput);
+    }
     if (!player) return null;
+
+    const configured = (await loadPlayers()).find(config => config.id === player.id);
+    if (configured) {
+        try {
+            await refreshPlayerAliases(configured);
+        } catch (error) {
+            console.error("Could not refresh BF6 player aliases:", error);
+        }
+    }
 
     return {
         player,
@@ -336,27 +339,7 @@ export async function refreshBF6Data(): Promise<{
  * Gets latest stored weapon playstyle rows for a specific player (fresh snapshot only)
  */
 export async function getPlayerWeaponPlaystyle(userInput: string) {
-    const normalized = userInput.trim().toLowerCase();
-    if (!normalized) return null;
-
-    const players = await db.select({
-        id: bf6Players.id,
-        platformUserHandle: bf6Players.platformUserHandle,
-        user: bf6Players.user,
-    }).from(bf6Players);
-
-    const exact = players.find((p) =>
-        p.id.toLowerCase() === normalized ||
-        p.user.toLowerCase() === normalized ||
-        p.platformUserHandle.toLowerCase() === normalized
-    );
-
-    const contains = players.find((p) =>
-        p.user.toLowerCase().includes(normalized) ||
-        p.platformUserHandle.toLowerCase().includes(normalized)
-    );
-
-    const matched = exact ?? contains;
+    const matched = await resolveBF6Player(userInput);
     if (!matched) return null;
 
     const weapons = await db.select({
@@ -527,27 +510,7 @@ export async function getClassLeaderboard(
 }
 
 export async function getPlayerClassStats(userInput: string) {
-    const normalized = userInput.trim().toLowerCase();
-    if (!normalized) return null;
-
-    const players = await db.select({
-        id: bf6Players.id,
-        platformUserHandle: bf6Players.platformUserHandle,
-        user: bf6Players.user,
-    }).from(bf6Players);
-
-    const exact = players.find((p) =>
-        p.id.toLowerCase() === normalized ||
-        p.user.toLowerCase() === normalized ||
-        p.platformUserHandle.toLowerCase() === normalized
-    );
-
-    const contains = players.find((p) =>
-        p.user.toLowerCase().includes(normalized) ||
-        p.platformUserHandle.toLowerCase().includes(normalized)
-    );
-
-    const matched = exact ?? contains;
+    const matched = await resolveBF6Player(userInput);
     if (!matched) return null;
 
     const classes = await db.select({
@@ -731,26 +694,7 @@ export async function getPlayerMonthlyHistory(userInput: string): Promise<{
     player: { id: string; user: string; platformUserHandle: string };
     months: MonthlyRow[];
 } | null> {
-    const normalized = userInput.trim().toLowerCase();
-    if (!normalized) return null;
-
-    const players = await db.select({
-        id: bf6Players.id,
-        user: bf6Players.user,
-        platformUserHandle: bf6Players.platformUserHandle,
-    }).from(bf6Players);
-
-    const exact = players.find((p) =>
-        p.id.toLowerCase() === normalized ||
-        p.user.toLowerCase() === normalized ||
-        p.platformUserHandle.toLowerCase() === normalized
-    );
-    const contains = players.find((p) =>
-        p.user.toLowerCase().includes(normalized) ||
-        p.platformUserHandle.toLowerCase().includes(normalized)
-    );
-
-    const matched = exact ?? contains;
+    const matched = await resolveBF6Player(userInput);
     if (!matched) return null;
 
     const playerScrapes = await db.select({

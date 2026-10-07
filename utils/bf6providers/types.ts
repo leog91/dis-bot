@@ -8,6 +8,8 @@ export type Player = {
     userName: string;
     id: string;
     personaId?: string;
+    nucleusId?: string;
+    steamId64?: string;
     intggProfileId?: string;
     configuredAliases?: PlayerAlias[];
 };
@@ -32,6 +34,7 @@ export type PlayerConfig = {
             nucleusId: string;
         };
         steam?: {
+            steamId64?: string;
             personaId?: string;
             nucleusId?: string;
         };

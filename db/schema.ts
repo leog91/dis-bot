@@ -4,7 +4,7 @@ export const bf6PlayerStatus = ['active', 'private', 'inactive', 'not_found'] as
 export type BF6PlayerStatus = typeof bf6PlayerStatus[number];
 export const bf6AliasNamespaces = ['tracker', 'ea', 'steam'] as const;
 export type BF6AliasNamespace = typeof bf6AliasNamespaces[number];
-export const bf6AliasSources = ['manual', 'tracker', 'gametools'] as const;
+export const bf6AliasSources = ['manual', 'tracker', 'gametools', 'steam'] as const;
 export type BF6AliasSource = typeof bf6AliasSources[number];
 
 export const bf6Players = sqliteTable('bf6_players', {

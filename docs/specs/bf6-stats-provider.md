@@ -58,15 +58,15 @@ Providers key players differently. The players config (`config/bf6players.json`,
 
 ```jsonc
 {
-  "userName": "K00ftt",
+  "userName": "player-one",
   "ids": {
-    "tracker": { "profileId": "2851980846" },
-    "intgg": { "profileId": "123456" },
-    "ea": { "personaId": "1115553730", "nucleusId": "2626883460" }
+    "tracker": { "profileId": "30001" },
+    "intgg": { "profileId": "40001" },
+    "ea": { "personaId": "10001", "nucleusId": "20001" }
   },
   "nicks": {
-    "tracker": ["K00ftt"],
-    "ea": ["K00ftt", "-LAG-Kooftt"]
+    "tracker": ["PlayerOne"],
+    "ea": ["PlayerOneEA", "OldPlayerName"]
   }
 }
 ```
@@ -75,9 +75,56 @@ Providers key players differently. The players config (`config/bf6players.json`,
 - `ids.tracker.profileId` is used by the tracker provider and profile URLs.
 - `ids.intgg.profileId` is optional and is used to build INT.GG profile links.
 - `ids.ea.personaId` is used by gametools; `nucleusId` records the EA account identity.
-- `ids.steam` records linked Steam identity IDs when known.
+- `ids.steam.steamId64` optionally links the actual Steam account for nickname collection.
+  Keep it as a string (e.g. `"76561198000000001"`). Existing `personaId`/`nucleusId`
+  fields are EA-side IDs and must not be used as SteamID64 values.
 - `nicks` records current and historical handles by source without using mutable handles
   as database keys.
+
+### Nickname discovery and command lookup
+
+Each BF6 refresh also collects identities independently of stats availability:
+
+`bf6 nick <player>` also imports that player's configured aliases and refreshes their
+live identity data directly, without waiting for the six-hour stats cache. Repeated
+requests for the same player share in-flight work and use a one-minute network cache;
+configuration edits are imported even during that cache period. Stored/configured
+names remain available when upstream name lookups fail. Scheduled/manual full BF6
+refreshes force the identity check as well.
+
+- GameTools `/bf6/player/?nucleus_id=<EA nucleusId>` returns current names for linked
+  EA/Steam personas, using the live response's `username`/`displayName` fields.
+  The bot verifies the returned nucleus ID before linking names. It falls back to
+  `/bf6/player/?playerid=<EA personaId>` when no nucleus ID is configured, and also
+  supports the documentation example's legacy `name` field.
+  The stats endpoint also contributes its observed handle. GameTools does not expose
+  an EA nickname-history endpoint in its current OpenAPI specification; the bot
+  retains previously observed names so future renames remain searchable.
+- With `ids.steam.steamId64` configured, the Steam Community profile XML supplies the
+  current display name and `/profiles/<SteamID64>/ajaxaliases/` supplies recent aliases.
+  These public endpoints require no API key. The recent list is limited and users can
+  clear it, so it is not a complete account history. The official Steam Web API
+  `ISteamUser/GetPlayerSummaries` is an alternative for current names, requiring a key.
+- Tracker names remain sourced from existing history/config or the tracker provider
+  when selected. Changing to GameTools does not poll Tracker for new names.
+
+Names are saved under the same stable local player ID, regardless of namespace.
+`firstSeenAt`/`lastSeenAt` are bot observation dates, including observations in Steam's
+recent-name list; they are not the dates a nickname was active. Steam's localized
+`timechanged` strings are deliberately not interpreted as reliable timestamps.
+Re-observing an alias updates its source and last-seen date without deleting old names.
+Identity lookup uses exact names first, then unambiguous partial matches across all
+stored aliases. This lookup is shared by stats, teamplay, AI, alias history, monthly
+history, weapon playstyle and class commands; names with spaces are supported.
+
+For example, add `"steam": { "steamId64": "76561198000000001" }` alongside a player's
+EA/Tracker IDs, run `bf6 refresh`, then use:
+
+```text
+bf6 nick player-one
+bf6 history Player-Álpha New Name
+bf6 playstyle Player-Álpha New Name
+```
 
 ## Field mapping (tracker -> gametools)
 

@@ -43,7 +43,7 @@ describe("BF6 player cards", () => {
     });
 
     it("builds INT.GG profile links from the current handle and configured id", () => {
-        expect(buildIntggProfileUrl("Chupetin de Brea", "388814"))
-            .toBe("https://int.gg/bf6/player/Chupetin%20de%20Brea-388814");
+        expect(buildIntggProfileUrl("Example Player Name", "40001"))
+            .toBe("https://int.gg/bf6/player/Example%20Player%20Name-40001");
     });
 });
