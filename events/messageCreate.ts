@@ -18,18 +18,22 @@ export default async function onMessage(msg: Message, commands: Map<string, any>
     const server = msg.guild?.name || "DM";
 
 
-    if (!(await hasPermission(cmd, msg))) {
-        await msg.react("❌");
-        logger(server, `Permission denied: ${msg.author.tag} tried to run ${cmd.name}`, "INFO");
-        return;
-    }
-
     try {
+        if (!(await hasPermission(cmd, msg))) {
+            await msg.react("❌");
+            logger(server, `Permission denied: ${msg.author.tag} tried to run ${cmd.name}`, "INFO");
+            return;
+        }
+
         await cmd.execute(msg, args);
         logger(server, `Executed command: ${cmd.name} by ${msg.author.tag}`, "INFO");
     } catch (err) {
 
         logger(server, `Error executing ${cmd.name} by ${msg.author.tag}: ${err}`, "ERROR");
-        msg.reply("⚠️ Error executing command.");
+        try {
+            await msg.reply("⚠️ Error executing command.");
+        } catch (replyError) {
+            logger(server, `Failed to send error reply for ${cmd.name}: ${replyError}`, "ERROR");
+        }
     }
 }

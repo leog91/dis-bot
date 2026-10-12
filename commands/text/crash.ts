@@ -7,39 +7,9 @@ import {
     UserSelectMenuBuilder,
     Message,
 } from "discord.js";
-import fs from "fs";
-import path from "path";
+import { crashCounterStore, type GuildCrashData } from "../../services/crashCounter.service";
 
-const crashCounterPathFromEnv = process.env.CRASH_COUNTER_FILE_PATH
-    ?? (process.env.ASSETS_PRIVATE_DIR
-        ? path.join(process.env.ASSETS_PRIVATE_DIR, "crashcounter.json")
-        : "./crashcounter.json");
-const FILE = path.isAbsolute(crashCounterPathFromEnv)
-    ? crashCounterPathFromEnv
-    : path.resolve(crashCounterPathFromEnv);
-
-type GuildData = {
-    users: Record<string, { name: string; crashes: number }>;
-};
-
-type CrashData = Record<string, GuildData>; // key = guildId
-
-// Ensure JSON exists
-fs.mkdirSync(path.dirname(FILE), { recursive: true });
-if (!fs.existsSync(FILE)) {
-    fs.writeFileSync(FILE, JSON.stringify({}, null, 2));
-}
-
-function loadData(): CrashData {
-    const raw = JSON.parse(fs.readFileSync(FILE, "utf8"));
-    return raw;
-}
-
-function saveData(data: CrashData) {
-    fs.writeFileSync(FILE, JSON.stringify(data, null, 2));
-}
-
-function renderTable(data: GuildData): string {
+function renderTable(data: GuildCrashData): string {
     const users = Object.values(data.users ?? {});
     if (!users.length) return "naranja";
     return users
@@ -56,9 +26,7 @@ export default defineCommand({
     async execute(msg: Message) {
         if (!msg.guild) return;
 
-        const data = loadData();
-        if (!data[msg.guild.id]) data[msg.guild.id] = { users: {} };
-        const guildData = data[msg.guild.id];
+        const guildData = crashCounterStore.getGuild(msg.guild.id);
 
         const userSelect = new UserSelectMenuBuilder()
             .setCustomId("crash_user_select")
@@ -85,6 +53,5 @@ export default defineCommand({
             components: [selectRow, buttons],
         });
 
-        saveData(data);
     },
 });

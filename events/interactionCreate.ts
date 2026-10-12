@@ -1,41 +1,12 @@
-// interactionCreate.ts
 import { Interaction, ComponentType } from "discord.js";
-import fs from "fs";
-import path from "path";
 import { logger } from "../utils/logger";
-
-const crashCounterPathFromEnv = process.env.CRASH_COUNTER_FILE_PATH
-    ?? (process.env.ASSETS_PRIVATE_DIR
-        ? path.join(process.env.ASSETS_PRIVATE_DIR, "crashcounter.json")
-        : "./crashcounter.json");
-const FILE = path.isAbsolute(crashCounterPathFromEnv)
-    ? crashCounterPathFromEnv
-    : path.resolve(crashCounterPathFromEnv);
-
-type GuildData = {
-    users: Record<string, { name: string; crashes: number }>;
-};
-
-type CrashData = Record<string, GuildData>;
+import { crashCounterStore, type GuildCrashData } from "../services/crashCounter.service";
 
 const selectedUser = new Map<string, string>();
 const CRASH_USER_SELECT_ID = "crash_user_select";
 const CRASH_BUTTON_IDS = new Set(["crash_add", "crash_remove"]);
 
-function loadData(): CrashData {
-    fs.mkdirSync(path.dirname(FILE), { recursive: true });
-    if (!fs.existsSync(FILE)) {
-        fs.writeFileSync(FILE, JSON.stringify({}, null, 2));
-        return {};
-    }
-    return JSON.parse(fs.readFileSync(FILE, "utf8"));
-}
-
-function saveData(data: CrashData) {
-    fs.writeFileSync(FILE, JSON.stringify(data, null, 2));
-}
-
-function renderTable(guildData: GuildData): string {
+function renderTable(guildData: GuildCrashData): string {
     const users = Object.values(guildData.users ?? {});
     if (!users.length) return "No crashes recorded yet.";
     return users
@@ -52,84 +23,38 @@ export default async function interactionCreate(interaction: Interaction) {
         && interaction.customId === CRASH_USER_SELECT_ID;
     const isCrashButton = interaction.isButton()
         && CRASH_BUTTON_IDS.has(interaction.customId);
-
     if (!isCrashUserSelect && !isCrashButton) return;
 
-    const data = loadData();
-    if (!data[interaction.guild.id]) data[interaction.guild.id] = { users: {} };
-    const guildData = data[interaction.guild.id];
-
-    const server = interaction.guild?.name || "DM";
-
-    // ------------------ USER SELECT ------------------
-    if (isCrashUserSelect) {
-        const userId = interaction.values[0];
-        selectedUser.set(interaction.message.id, userId);
-
-        // Fetch the selected user's info
-        const selectedUserObj = await interaction.client.users.fetch(userId);
-
-        // Log the selection
-        const user = interaction.user;
-        logger(
-            server,
-            `${user.tag} selected user: ${selectedUserObj.username} (${userId})`,
-            "SELECT"
-        );
-
-        try {
+    const server = interaction.guild.name;
+    try {
+        if (isCrashUserSelect) {
             await interaction.deferUpdate();
-        } catch (err) {
-            logger(server, `Failed to defer update on user select: ${err}`, "ERROR");
+            const userId = interaction.values[0];
+            selectedUser.set(interaction.message.id, userId);
+            const user = await interaction.client.users.fetch(userId);
+            logger(server, `${interaction.user.tag} selected user: ${user.username} (${userId})`, "SELECT");
+            return;
         }
-        return;
-    }
 
-    // ------------------ BUTTONS ------------------
-    if (!interaction.isButton()) return;
-
-    const userId = selectedUser.get(interaction.message.id);
-    if (!userId) {
-        try {
+        if (!interaction.isButton()) return;
+        const userId = selectedUser.get(interaction.message.id);
+        if (!userId) {
             await interaction.reply({ content: "Select a user first." });
-        } catch (err) {
-            logger(server, `Failed to reply to button press (no user selected): ${err}`, "ERROR");
+            return;
         }
-        return;
-    }
 
-    const user = await interaction.client.users.fetch(userId);
-    if (!guildData.users[userId]) {
-        guildData.users[userId] = { name: user.username, crashes: 0 };
-    }
-
-    let action = "";
-    if (interaction.customId === "crash_add") {
-        guildData.users[userId].crashes++;
-        action = "add";
-    } else if (interaction.customId === "crash_remove") {
-        guildData.users[userId].crashes =
-            Math.max(0, guildData.users[userId].crashes - 1);
-        action = "remove";
-    }
-
-    // Log the button press
-    logger(server, `${interaction.user.tag} pressed button: ${action}`, "BUTTON");
-
-    saveData(data);
-
-    try {
         await interaction.deferUpdate();
-    } catch (err) {
-        logger(server, `Failed to defer update on button press: ${err}`, "ERROR");
-    }
-
-    try {
+        const user = await interaction.client.users.fetch(userId);
+        const action = interaction.customId === "crash_add" ? "add" : "remove";
+        const guildData = crashCounterStore.update(
+            interaction.guild.id, userId, user.username, action === "add" ? 1 : -1,
+        );
+        logger(server, `${interaction.user.tag} pressed button: ${action}`, "BUTTON");
         await interaction.editReply({
             content: `💥 **Crash Tracker**\n\n${renderTable(guildData)}`,
             components: interaction.message.components,
         });
     } catch (err) {
-        logger(server, `Failed to edit reply on button press: ${err}`, "ERROR");
+        logger(server, `Failed to handle crash interaction: ${err}`, "ERROR");
     }
 }
