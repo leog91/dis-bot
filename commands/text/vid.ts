@@ -105,7 +105,7 @@ export default defineCommand({
 
                 const notice = "notice" in instagramResult && instagramResult.notice
                     ? instagramResult.notice
-                    : "No pude descargar este video de Instagram.";
+                    : "I couldn't download this Instagram video.";
                 await progress.update(`${notice}\n[Original](<${url}>)`);
                 return;
             }
@@ -157,8 +157,12 @@ export default defineCommand({
                 return;
             }
         } catch (err) {
-            console.error(err);
-            await progress?.remove();
+            const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+            console.error(`vid failed for ${url}: ${detail}`);
+            if (progress) {
+                await progress.update(`I couldn't process or upload the video.\n[Original](<${url}>)`);
+                return;
+            }
             await linkMessage?.delete().catch(() => {});
             await msg.channel.send(`by ${msg.author}:\n${url}`);
         }

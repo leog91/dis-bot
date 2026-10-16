@@ -3,6 +3,7 @@ import path from "path";
 import type { Message, MessageCreateOptions } from "discord.js";
 import ffmpegPath from "ffmpeg-static";
 import { getGuildUploadLimitBytes } from "./guildUploadLimit.service";
+import { resolveYtDlpBinary } from "../utils/ytdlp";
 
 declare const Bun: any;
 
@@ -43,9 +44,6 @@ export type VidProgressMessage = {
 
 const DISCORD_UPLOAD_HEADROOM_BYTES = 512 * 1024;
 const ffmpegBinary = ffmpegPath as unknown as string | null;
-const ytdlpBinary = process.env.YTDLP_BINARY_PATH
-    ? path.resolve(process.cwd(), process.env.YTDLP_BINARY_PATH)
-    : path.resolve(process.cwd(), "yt-dlp");
 const cookiesFile = process.env.YTDLP_COOKIES_PATH
     ? path.resolve(process.cwd(), process.env.YTDLP_COOKIES_PATH)
     : path.resolve(process.cwd(), "cookies.txt");
@@ -191,7 +189,7 @@ const addCommonYtDlpArgs = async (cmd: string[]) => {
 
 const runYtDlpGetUrl = async (url: string, attempt: YtDlpAttempt = {}) => {
     const cmd = [
-        ytdlpBinary,
+        resolveYtDlpBinary(),
         "-g",
         "--no-warnings",
         "--extractor-retries", "3",
@@ -224,7 +222,7 @@ const runYtDlpDownload = async (
     attempt: YtDlpAttempt = {}
 ) => {
     const cmd = [
-        ytdlpBinary,
+        resolveYtDlpBinary(),
         "-f", attempt.format ?? "bv*+ba/b",
         "--merge-output-format", "mp4",
         "--no-warnings",
@@ -482,7 +480,7 @@ export const trySendRedditVideo = async (
             );
             return {
                 sent: false,
-                notice: `No lo puedo subir con audio porque pesa ${formatMb(fileStat.size)}. Te paso el link.`,
+                notice: `I can't upload it with audio because it's ${formatMb(fileStat.size)}. Here's the link instead.`,
             };
         }
 
@@ -555,7 +553,7 @@ const trySendLinkedVideo = async (
         return {
             sent: false,
             notice: source === "Instagram"
-                ? "No pude descargar este video de Instagram. Puede ser privado o requerir iniciar sesión."
+                ? "I couldn't download this Instagram video. It may be private or require you to log in."
                 : undefined,
         };
     }
@@ -580,7 +578,7 @@ const trySendLinkedVideo = async (
             );
             return {
                 sent: false,
-                notice: `No puedo subir el video porque pesa ${formatMb(fileStat.size)}.`,
+                notice: `I can't upload the video because it's ${formatMb(fileStat.size)}.`,
             };
         }
 

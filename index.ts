@@ -31,6 +31,8 @@ if (privateCommandsDir && !fs.existsSync(privateCommandsDir)) {
 
 
 const client = new Client({
+    // Video attachments can take longer than the default 15 seconds to upload.
+    rest: { timeout: 120_000 },
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
