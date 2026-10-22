@@ -4,6 +4,8 @@ import sharp from "sharp";
 import { db } from "../../db";
 import { weatherPreferences } from "../../db/schema";
 import { eq } from "drizzle-orm";
+import { renderWeatherComparison } from "../../utils/weatherComparison";
+import { formatLocalTime, formatRainAmount, renderHourlyForecast, renderWeatherHighlights } from "../../utils/weatherDetails";
 
 interface GeoResult {
     latitude: number;
@@ -18,6 +20,7 @@ interface GeoResponse {
 }
 
 interface WeatherResponse {
+    timezone: string;
     current_weather: {
         temperature: number;
         windspeed: number;
@@ -27,6 +30,8 @@ interface WeatherResponse {
     };
     hourly: {
         time: string[];
+        temperature_2m: number[];
+        precipitation_probability: number[];
         relative_humidity_2m: number[];
         apparent_temperature: number[];
         precipitation: number[];
@@ -38,7 +43,13 @@ interface WeatherResponse {
         time: string[];
         temperature_2m_max: number[];
         temperature_2m_min: number[];
+        apparent_temperature_max: number[];
+        apparent_temperature_min: number[];
+        sunrise: string[];
+        sunset: string[];
+        wind_gusts_10m_max: number[];
         precipitation_probability_max: number[];
+        precipitation_sum: number[];
         uv_index_max: number[];
         weathercode: number[];
     };
@@ -207,8 +218,8 @@ async function fetchWeatherBatch(locations: GeoResult[]): Promise<WeatherRespons
     const longitude = locations.map(location => location.longitude).join(",");
     const url = "https://api.open-meteo.com/v1/forecast?"
         + `latitude=${latitude}&longitude=${longitude}&current_weather=true`
-        + "&hourly=relative_humidity_2m,apparent_temperature,precipitation,cloud_cover,surface_pressure,uv_index"
-        + "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,weathercode"
+        + "&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,apparent_temperature,precipitation,cloud_cover,surface_pressure,uv_index"
+        + "&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,sunrise,sunset,wind_gusts_10m_max,precipitation_probability_max,precipitation_sum,uv_index_max,weathercode"
         + "&forecast_days=10&timezone=auto";
     const response = await fetchWithTimeout(url);
     if (!response.ok) throw new Error("Weather request failed");
@@ -218,22 +229,27 @@ async function fetchWeatherBatch(locations: GeoResult[]): Promise<WeatherRespons
 
 async function renderWeatherCard(results: Array<CityWeather | { query: string; error: string }>): Promise<Buffer> {
     const width = 1080;
-    const cardHeight = 230;
-    const height = 120 + results.length * cardHeight;
+    const cardHeight = 520;
+    const comparison = renderWeatherComparison(
+        results.filter((result): result is CityWeather => "location" in result),
+        92 + results.length * cardHeight
+    );
+    const height = 120 + results.length * cardHeight + comparison.height;
     const cards = results.map((result, index) => renderCityCard(result, 92 + index * cardHeight)).join("");
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
         <defs><linearGradient id="background" x2="0" y2="1"><stop stop-color="#10213d"/><stop offset="1" stop-color="#07101f"/></linearGradient></defs>
         <rect width="100%" height="100%" fill="url(#background)"/>
         <text x="42" y="48" fill="#f8fafc" font-family="sans-serif" font-size="30" font-weight="700">10-Day Weather Forecast</text>
-        <text x="42" y="75" fill="#94a3b8" font-family="sans-serif" font-size="16">Temperature ranges in Celsius. Rain probability is shown below each day.</text>
+        <text x="42" y="75" fill="#94a3b8" font-family="sans-serif" font-size="16">Temperatures in Celsius. Daily rain chance and totals below each day. Times are local.</text>
         ${cards}
+        ${comparison.svg}
     </svg>`;
     return sharp(Buffer.from(svg)).png().toBuffer();
 }
 
 function renderCityCard(result: CityWeather | { query: string; error: string }, y: number): string {
     if (!("location" in result)) {
-        return `<rect x="30" y="${y}" width="1020" height="200" rx="18" fill="#17243a"/>
+        return `<rect x="30" y="${y}" width="1020" height="490" rx="18" fill="#17243a"/>
             <text x="58" y="${y + 82}" fill="#f8fafc" font-family="sans-serif" font-size="24" font-weight="700">${escapeXml(result.query)}</text>
             <text x="58" y="${y + 120}" fill="#fca5a5" font-family="sans-serif" font-size="18">${escapeXml(result.error)}</text>`;
     }
@@ -259,17 +275,23 @@ function renderCityCard(result: CityWeather | { query: string; error: string }, 
             <text x="${x}" y="${highY - 10}" text-anchor="middle" fill="#e2e8f0" font-family="sans-serif" font-size="13">${daily.temperature_2m_max[day]}°</text>
             <text x="${x}" y="${lowY + 24}" text-anchor="middle" fill="#cbd5e1" font-family="sans-serif" font-size="13">${daily.temperature_2m_min[day]}°</text>
             <text x="${x}" y="${y + 177}" text-anchor="middle" fill="#94a3b8" font-family="sans-serif" font-size="12">${label}</text>
-            <text x="${x}" y="${y + 198}" text-anchor="middle" fill="#7dd3fc" font-family="sans-serif" font-size="12">${daily.precipitation_probability_max[day] ?? 0}% rain</text>`;
+            <text x="${x}" y="${y + 198}" text-anchor="middle" fill="#7dd3fc" font-family="sans-serif" font-size="12">${daily.precipitation_probability_max[day] ?? "—"}% rain</text>
+            <text x="${x}" y="${y + 217}" text-anchor="middle" fill="#7dd3fc" font-family="sans-serif" font-size="12">${formatRainAmount(daily.precipitation_sum?.[day])}</text>`;
     }).join("");
 
-    return `<rect x="30" y="${y}" width="1020" height="200" rx="18" fill="#17243a" stroke="#263a57"/>
+    return `<rect x="30" y="${y}" width="1020" height="490" rx="18" fill="#17243a" stroke="#263a57"/>
         <text x="58" y="${y + 38}" fill="#f8fafc" font-family="sans-serif" font-size="23" font-weight="700">${escapeXml(formatLocationHeader(location))}</text>
         <text x="58" y="${y + 70}" fill="#93c5fd" font-family="sans-serif" font-size="34" font-weight="700">${weather.current_weather.temperature}°</text>
         <text x="58" y="${y + 99}" fill="#cbd5e1" font-family="sans-serif" font-size="15">${escapeXml(weatherLabel(weather.current_weather.weathercode))}</text>
         <text x="58" y="${y + 130}" fill="#94a3b8" font-family="sans-serif" font-size="14">Feels ${feelsLike ?? "-"}°  •  Wind ${weather.current_weather.windspeed} km/h ${getWindDirection(weather.current_weather.winddirection)}</text>
         <text x="58" y="${y + 155}" fill="#94a3b8" font-family="sans-serif" font-size="14">Humidity ${currentHour >= 0 ? weather.hourly.relative_humidity_2m[currentHour] : "-"}%  •  UV ${currentHour >= 0 ? weather.hourly.uv_index[currentHour] : "-"}</text>
+        <text x="58" y="${y + 181}" fill="#cbd5e1" font-family="sans-serif" font-size="12">${escapeXml(formatLocalTime(weather.timezone))}</text>
         <text x="${chartX}" y="${y + 38}" fill="#94a3b8" font-family="sans-serif" font-size="13">DAILY LOW / HIGH</text>
-        ${points}`;
+        ${points}
+        <line x1="58" x2="1022" y1="${y + 232}" y2="${y + 232}" stroke="#263a57"/>
+        ${renderHourlyForecast(weather, y + 250)}
+        <line x1="58" x2="1022" y1="${y + 350}" y2="${y + 350}" stroke="#263a57"/>
+        ${renderWeatherHighlights(weather, y + 373)}`;
 }
 
 function formatDate(date: string): string {
