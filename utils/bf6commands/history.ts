@@ -47,11 +47,11 @@ export const historyHandler: BF6Handler = async (_sub, _msg, args, safeReply) =>
         const visibleRows = rows.slice(0, 20);
         const playerColWidth = Math.max(
             "player".length,
-            ...visibleRows.map((r) => r.platformUserHandle.length)
+            ...visibleRows.map((r) => (r.platformUserHandle + statusMarker(r.status)).length)
         );
         const fmtPlayer = (name: string, status: string) => {
             const marker = statusMarker(status);
-            return (name + marker).padEnd(playerColWidth + marker.length, " ");
+            return (name + marker).padEnd(playerColWidth, " ");
         };
 
         const fmtVal = (n: number, status: string) => {

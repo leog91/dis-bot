@@ -32,6 +32,7 @@ export type BF6Handler = (
 
 export const SUBCOMMANDS = [
     "kills",
+    "kills-full",
     "deaths",
     "revives",
     "score",
@@ -58,7 +59,7 @@ export const SUBCOMMANDS = [
 export type SubCommand = typeof SUBCOMMANDS[number];
 
 const SUBCOMMAND_HELP_CATEGORIES: readonly { title: string; commands: readonly SubCommand[] }[] = [
-    { title: "Stats", commands: ["kills", "deaths", "revives", "score", "rank", "timePlayed", "stats", "teamplay", "ai", "playStyle", "history"] },
+    { title: "Stats", commands: ["kills", "kills-full", "deaths", "revives", "score", "rank", "timePlayed", "stats", "teamplay", "ai", "playStyle", "history"] },
     { title: "Combat Gadget Groups", commands: ["combatgadgets", "launchers", "mines", "grenades", "melee"] },
     { title: "Launchers", commands: ["m320he", "m320thrm", "sichg1wp", "rpg", "mas148", "spire", "m136at", "igla"] },
     { title: "Explosives & Grenades", commands: ["ptkm1r", "mine", "claymore", "slam", "c4", "frag", "incendiary"] },

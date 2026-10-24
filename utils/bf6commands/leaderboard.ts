@@ -1,9 +1,19 @@
 import { getBF6Data, getProgressData } from "../bf6data";
 import { loadPlayers } from "../bf6rank";
-import { buildIntggProfileUrl, leaderboardStatusMarker } from "./format";
+import { buildIntggProfileUrl, formatFullKillsLeaderboard, formatKillsLeaderboard, formatLeaderboardTable, formatProgressValue, leaderboardStatusMarker } from "./format";
 import type { BF6Handler } from "./constants";
 
 export const leaderboardHandler: BF6Handler = async (sub, msg, args, safeReply) => {
+    if (sub === "kills-full") {
+        if (args[1]) {
+            await safeReply("Usage: bf6 kills-full (current totals only; no history).");
+            return;
+        }
+        const content = formatFullKillsLeaderboard(await getBF6Data());
+        await safeReply(content || "No rank data available yet.");
+        return;
+    }
+
     // Handle optional time argument (e.g., "7d", "1m")
     const timeArg = args[1];
     let bfdata = [];
@@ -25,36 +35,19 @@ export const leaderboardHandler: BF6Handler = async (sub, msg, args, safeReply) 
 
     let sorted = bfdata;
     let content = "";
-    const prefix = isProgress ? ` **Progress (${timeLabel})**\n` : "";
-    const sign = isProgress ? "+" : "";
+    const prefix = isProgress && sub !== "rank" && sub !== "social" ? ` **Progress (${timeLabel})**\n` : "";
 
     switch (sub) {
         case "kills":
-            sorted = [...bfdata].sort((a, b) => b.kills - a.kills);
-            content = sorted
-                .map((p: any) => `${leaderboardStatusMarker(p.status)}${p.platformUserHandle} - ${sign}${p.kills} kills`)
-                .join("\n");
+            content = formatKillsLeaderboard(bfdata, isProgress);
             break;
 
         case "deaths":
-            sorted = [...bfdata].sort((a, b) => b.deaths - a.deaths);
-            content = sorted
-                .map((p) => `${leaderboardStatusMarker(p.status)}${p.platformUserHandle} - ${sign}${p.deaths} deaths`)
-                .join("\n");
-            break;
-
         case "revives":
-            sorted = [...bfdata].sort((a, b) => b.revives - a.revives);
-            content = sorted
-                .map((p) => `${leaderboardStatusMarker(p.status)}${p.platformUserHandle} - ${sign}${p.revives} revives`)
-                .join("\n");
-            break;
-
         case "score":
-            sorted = [...bfdata].sort((a, b) => b.score - a.score);
-            content = sorted
-                .map((p) => `${leaderboardStatusMarker(p.status)}${p.platformUserHandle} - ${sign}${p.score} score`)
-                .join("\n");
+            sorted = [...bfdata].sort((a, b) => b[sub] - a[sub]);
+            content = formatLeaderboardTable(sorted, sub.charAt(0).toUpperCase() + sub.slice(1), sub,
+                (p) => formatProgressValue(p[sub], isProgress));
             break;
 
         case "rank":
@@ -64,23 +57,18 @@ export const leaderboardHandler: BF6Handler = async (sub, msg, args, safeReply) 
             } else {
                 sorted = [...bfdata].sort((a, b) => (b.careerPlayerRank ?? -1) - (a.careerPlayerRank ?? -1));
             }
-            content = sorted
-                .map((p) => `${leaderboardStatusMarker(p.status)}${p.platformUserHandle} - Rank ${p.careerPlayerRank ?? "—"}`)
-                .join("\n");
+            content = formatLeaderboardTable(sorted, "Rank", "rank", (p) => String(p.careerPlayerRank ?? "—"));
             break;
 
         case "timePlayed":
             sorted = [...bfdata].sort((a, b) => b.timePlayedValue - a.timePlayedValue);
-            content = sorted
-                .map((p) => {
-                    const marker = leaderboardStatusMarker(p.status);
+            content = formatLeaderboardTable(sorted, "Playtime", "time", (p) => {
                     if (isProgress) {
                         const hours = (p.timePlayedValue / 3600).toFixed(1);
-                        return `${marker}${p.platformUserHandle} - +${hours}h played`;
+                        return `${p.timePlayedValue >= 0 ? "+" : ""}${hours}h`;
                     }
-                    return `${marker}${p.platformUserHandle} - ${p.timePlayedDisplay}`;
-                })
-                .join("\n");
+                    return p.timePlayedDisplay;
+                });
             break;
 
         case "social": {

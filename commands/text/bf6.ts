@@ -40,6 +40,7 @@ async function safeReply(msg: Message, content: Parameters<SafeReply>[0]): Promi
 
 const HANDLERS: Partial<Record<SubCommand, (msg: Message, args: string[], reply: SafeReply) => Promise<void>>> = {
     kills: (m, a, r) => leaderboardHandler("kills", m, a, r),
+    "kills-full": (m, a, r) => leaderboardHandler("kills-full", m, a, r),
     deaths: (m, a, r) => leaderboardHandler("deaths", m, a, r),
     revives: (m, a, r) => leaderboardHandler("revives", m, a, r),
     score: (m, a, r) => leaderboardHandler("score", m, a, r),
