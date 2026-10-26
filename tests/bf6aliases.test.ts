@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { fetchGameToolsAliases, fetchSteamAliases } from "../utils/bf6aliases";
-import { matchBF6Player } from "../utils/bf6identity";
+import { configuredBF6Handle, currentBF6Handle, matchBF6Player, resolveBF6DisplayHandle } from "../utils/bf6identity";
 import { createPlayerAliasRefresher } from "../utils/bf6aliasStore";
 import type { Player, PlayerAlias } from "../utils/bf6providers/types";
 
@@ -71,7 +71,7 @@ describe("BF6 alias discovery", () => {
                 { newname: "" }, { newname: 100 },
             ]));
         expect(await fetchSteamAliases(steamId64, fetcher)).toEqual([
-            { namespace: "steam", source: "steam", handle: "Player-Álpha New Name" },
+            { namespace: "steam", source: "steam", handle: "Player-Álpha New Name", isCurrent: true },
             { namespace: "steam", source: "steam", handle: "[team] PLAYER one" },
         ]);
     });
@@ -96,7 +96,7 @@ describe("BF6 alias discovery", () => {
             { personaId: 999, name: "Wrong account" }, { personaId: 10001, name: "New EA name" },
         ] }));
         expect(await fetchGameToolsAliases({ personaId: "10001" }, fetcher)).toEqual([
-            { namespace: "ea", source: "gametools", handle: "New EA name" },
+            { namespace: "ea", source: "gametools", handle: "New EA name", isCurrent: true },
         ]);
         expect(await fetchGameToolsAliases({ personaId: "1234" }, fetcher)).toEqual([]);
     });
@@ -111,8 +111,8 @@ describe("BF6 alias discovery", () => {
             ] });
         };
         expect(await fetchGameToolsAliases({ personaId: "10001", nucleusId: "20001" }, fetcher)).toEqual([
-            { namespace: "ea", source: "gametools", handle: "PlayerOneEA" },
-            { namespace: "steam", source: "gametools", handle: "Player-Álpha New Name" },
+            { namespace: "ea", source: "gametools", handle: "PlayerOneEA", isCurrent: true },
+            { namespace: "steam", source: "gametools", handle: "Player-Álpha New Name", isCurrent: true },
         ]);
     });
 
@@ -127,7 +127,7 @@ describe("BF6 alias discovery", () => {
         };
         expect(await fetchGameToolsAliases({ personaId: "10001", nucleusId: "20001" }, fetcher)).toEqual([
             { namespace: "ea", source: "gametools", handle: "PlayerOneEA" },
-            { namespace: "ea", source: "gametools", handle: "New Display Name" },
+            { namespace: "ea", source: "gametools", handle: "New Display Name", isCurrent: true },
         ]);
         expect(urls).toHaveLength(2);
         expect(urls[1]).toContain("playerid=10001");
@@ -135,6 +135,41 @@ describe("BF6 alias discovery", () => {
 });
 
 describe("shared BF6 nickname lookup", () => {
+    it("uses configured names only as a fallback, not instead of confirmed live names", () => {
+        const player: Player = {
+            id: "1", userName: "player-one",
+            configuredAliases: [
+                { namespace: "steam", source: "manual", handle: "Old Nick" },
+                { namespace: "steam", source: "manual", handle: "Latest Nick" },
+                { namespace: "ea", source: "manual", handle: "Old EA Name" },
+            ],
+        };
+        expect(configuredBF6Handle(player)).toBe("Latest Nick");
+        expect(configuredBF6Handle({ ...player, displayName: "Display Override" })).toBe("Display Override");
+        expect(configuredBF6Handle({ id: "2", userName: "unknown" })).toBeUndefined();
+        const live: PlayerAlias[] = [{ namespace: "steam", source: "steam", handle: "Live Steam Nick", isCurrent: true }];
+        expect(resolveBF6DisplayHandle(player, live, "player-one")).toBe("Live Steam Nick");
+        expect(resolveBF6DisplayHandle(player, [], "Last observed name")).toBe("Last observed name");
+        expect(resolveBF6DisplayHandle({ ...player, displayName: "Display Override" }, live, "Previous Steam Nick")).toBe("Display Override");
+        expect(resolveBF6DisplayHandle(player, [])).toBe("Latest Nick");
+    });
+    it("displays confirmed live names, never a recently observed historical alias", () => {
+        const aliases: PlayerAlias[] = [
+            { namespace: "ea", source: "gametools", handle: "EA Name", isCurrent: true },
+            { namespace: "steam", source: "steam", handle: "Current Nick", isCurrent: true },
+            { namespace: "steam", source: "steam", handle: "Old Nick" },
+        ];
+        expect(currentBF6Handle(aliases)).toBe("Current Nick");
+        expect(currentBF6Handle([aliases[2]])).toBeUndefined();
+    });
+
+    it("keeps both old and current names searchable after the display name changes", () => {
+        const renamed = [{ id: "1", user: "player-one", platformUserHandle: "Current Nick" }];
+        const history = [{ playerId: "1", normalizedHandle: "old nick" }];
+        for (const input of ["player-one", "old nick", "OLD", "current nick", "current"]) {
+            expect(matchBF6Player(input, renamed, history)?.id).toBe("1");
+        }
+    });
     const players = [
         { id: "1", user: "player-one", platformUserHandle: "PlayerOneEA" },
         { id: "2", user: "other", platformUserHandle: "Other EA" },

@@ -5,7 +5,7 @@ import { PlayerRank, updateBf6Data, loadPlayers } from "./bf6rank";
 import type { BF6GadgetSnapshotKey } from "./bf6gadgets";
 import type { BF6VehicleSnapshotKey } from "./bf6vehicles";
 import { matchBF6Player, normalizeBF6AliasHandle } from "./bf6identity";
-import { refreshPlayerAliases } from "./bf6aliasStore";
+import { refreshPlayerAliases, syncConfiguredPlayerNames } from "./bf6aliasStore";
 
 // ================= CONFIG =================
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
@@ -30,6 +30,9 @@ async function resolveBF6Player(userInput: string) {
     const normalized = userInput.trim().toLowerCase();
     if (!normalized) return null;
 
+    const configured = await loadPlayers();
+    await syncConfiguredPlayerNames(configured);
+
     const players = await db.select({
         id: bf6Players.id,
         user: bf6Players.user,
@@ -42,7 +45,6 @@ async function resolveBF6Player(userInput: string) {
         playerId: bf6PlayerAliases.playerId,
         normalizedHandle: bf6PlayerAliases.normalizedHandle,
     }).from(bf6PlayerAliases);
-    const configured = await loadPlayers();
     const configuredAliases = configured.flatMap(player => (player.configuredAliases ?? []).map(alias => ({
         playerId: player.id,
         normalizedHandle: normalizeBF6AliasHandle(alias.handle),
@@ -81,7 +83,7 @@ export async function getPlayerAliasProfile(userInput: string) {
     }
 
     return {
-        player,
+        player: await resolveBF6Player(player.id) ?? player,
         aliases: await getPlayerAliasHistory(player.id),
     };
 }
@@ -99,6 +101,7 @@ export async function getPlayerOverview(userInput: string) {
  * Fetches the latest scrape data for all players
  */
 export const getLatestScrapes = async () => {
+    await syncConfiguredPlayerNames(await loadPlayers());
     const latestPerPlayer = db.select({
         playerId: bf6Scrapes.playerId,
         maxDate: sql`MAX(${bf6Scrapes.scrapedAt})`.as('maxDate'),
@@ -282,7 +285,9 @@ export async function getBF6Data(): Promise<any[]> {
 
         if (!latestScrapes.length) {
             console.log("No DB data found. Will fetch fresh data.");
-            return await updateBf6Data();
+            const fresh = await updateBf6Data();
+            const stored = await getLatestScrapes();
+            return stored.length ? stored : fresh;
         }
 
         // Check freshness
@@ -297,7 +302,10 @@ export async function getBF6Data(): Promise<any[]> {
 
         console.log("DB data stale. Will fetch fresh data.");
         const fresh = await updateBf6Data();
-        if (fresh.length > 0) return fresh;
+        if (fresh.length > 0) {
+            const stored = await getLatestScrapes();
+            return stored.length ? stored : fresh;
+        }
 
         console.log("API fetch failed. Falling back to stale DB data.");
         return latestScrapes;

@@ -28,11 +28,15 @@ export async function fetchSteamAliases(steamId64: string, fetcher: Fetcher = fe
     if (!/^7656119\d{10}$/.test(steamId64)) return [];
     const profileUrl = `https://steamcommunity.com/profiles/${steamId64}/`;
     const names: string[] = [];
+    let currentHandle: string | undefined;
     try {
         const xml = await (await request(`${profileUrl}?xml=1`, fetcher)).text();
         if (xmlText(xml, "steamID64") !== steamId64) throw new Error("Steam identity mismatch");
         const current = xmlText(xml, "steamID");
-        if (current) names.push(current);
+        if (current) {
+            currentHandle = normalizeBF6AliasHandle(current);
+            names.push(current);
+        }
     } catch (error) {
         console.warn(`Steam current name unavailable for ${steamId64}:`, error);
     }
@@ -46,7 +50,10 @@ export async function fetchSteamAliases(steamId64: string, fetcher: Fetcher = fe
         console.warn(`Steam recent names unavailable for ${steamId64}:`, error);
     }
     const unique = new Map(names.map(handle => [normalizeBF6AliasHandle(handle), handle]));
-    return [...unique.values()].map(handle => ({ namespace: "steam", handle, source: "steam" }));
+    return [...unique.values()].map(handle => ({
+        namespace: "steam", handle, source: "steam",
+        ...(normalizeBF6AliasHandle(handle) === currentHandle ? { isCurrent: true } : {}),
+    }));
 }
 
 export async function fetchGameToolsAliases(player: Pick<Player, "personaId" | "nucleusId">, fetcher: Fetcher = fetch): Promise<PlayerAlias[]> {
@@ -66,9 +73,14 @@ export async function fetchGameToolsAliases(player: Pick<Player, "personaId" | "
                     if (!verified) continue;
                     const namespace = result.platform === "steam" ? "steam" : !result.platform || result.platform === "ea" ? "ea" : null;
                     if (!namespace) continue;
+                    const current = [result.displayName, result.username, result.name]
+                        .find(handle => typeof handle === "string" && handle.trim());
                     for (const handle of [result.username, result.displayName, result.name]) {
                         if (typeof handle !== "string" || !handle.trim()) continue;
-                        aliases.set(`${namespace}:${normalizeBF6AliasHandle(handle)}`, { namespace, handle: handle.trim(), source: "gametools" });
+                        aliases.set(`${namespace}:${normalizeBF6AliasHandle(handle)}`, {
+                            namespace, handle: handle.trim(), source: "gametools",
+                            ...(handle === current ? { isCurrent: true } : {}),
+                        });
                     }
                 }
             } catch (error) {

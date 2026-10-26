@@ -5,6 +5,7 @@ import type { BF6AliasNamespace, BF6AliasSource, BF6PlayerStatus } from "../../d
 export type BF6StatsProviderName = "tracker" | "gametools";
 
 export type Player = {
+    displayName?: string;
     userName: string;
     id: string;
     personaId?: string;
@@ -18,9 +19,11 @@ export type PlayerAlias = {
     namespace: BF6AliasNamespace;
     handle: string;
     source: BF6AliasSource;
+    isCurrent?: boolean;
 };
 
 export type PlayerConfig = {
+    displayName?: string;
     userName: string;
     ids: {
         tracker: {

@@ -8,7 +8,7 @@ import { BF6_GADGETS, BF6_GADGET_BY_KEY, gadgetSegmentMatches, type BF6GadgetSna
 import { BF6_VEHICLES, vehicleSegmentMatches, type BF6VehicleSnapshotKey } from "./bf6vehicles";
 import { getBF6Provider } from "./bf6providers";
 import { BF6_REQUEST_TIMEOUT_MS } from "./bf6providers/types";
-import { normalizeBF6AliasHandle } from "./bf6identity";
+import { configuredBF6Handle, normalizeBF6AliasHandle } from "./bf6identity";
 import { refreshPlayerAliases } from "./bf6aliasStore";
 export { normalizeBF6AliasHandle } from "./bf6identity";
 import type {
@@ -49,6 +49,7 @@ export async function loadPlayers(): Promise<Player[]> {
         const data = await fs.readFile(PLAYERS_CONFIG_PATH, "utf-8");
         const configs = JSON.parse(data) as PlayerConfig[];
         return configs.map((config) => ({
+            displayName: config.displayName,
             userName: config.userName,
             id: config.ids.tracker.profileId,
             personaId: config.ids.ea.personaId,
@@ -419,6 +420,21 @@ async function runBf6DataUpdate() {
 
             // 1. Upsert Metadata (always, so status is tracked even for private/inactive players)
             const existingPlayer = await db.select().from(bf6Players).where(eq(bf6Players.id, player.id)).get();
+            if (existingPlayer) {
+                // A changed provider/config name must not make the old identity unsearchable.
+                for (const handle of [existingPlayer.platformUserHandle, existingPlayer.user]) {
+                    if (!handle.trim()) continue;
+                    await db.insert(bf6PlayerAliases).values({
+                        playerId: player.id,
+                        namespace: "tracker",
+                        handle,
+                        normalizedHandle: normalizeBF6AliasHandle(handle),
+                        source: "manual",
+                        firstSeenAt: scrapedAt,
+                        lastSeenAt: scrapedAt,
+                    }).onConflictDoNothing();
+                }
+            }
 
             let platformUserHandle: string;
             let status: BF6PlayerStatus;
@@ -431,6 +447,11 @@ async function runBf6DataUpdate() {
                 status = "active";
                 platformUserHandle = result.data.rank.platformUserHandle;
             }
+
+            const providerHandle = platformUserHandle;
+            platformUserHandle = player.displayName?.trim() || existingPlayer?.platformUserHandle
+                || configuredBF6Handle(player) || platformUserHandle;
+            if (result.ok) result.data.rank.platformUserHandle = platformUserHandle;
 
             if (existingPlayer) {
                 await db.update(bf6Players).set({
@@ -474,7 +495,7 @@ async function runBf6DataUpdate() {
             const entry = result.data;
             const p = entry.rank;
 
-            const observedHandle = p.platformUserHandle.trim();
+            const observedHandle = providerHandle.trim();
             if (observedHandle) {
                 const namespace = provider.name === "gametools" ? "ea" : "tracker";
                 const normalizedHandle = normalizeBF6AliasHandle(observedHandle);
