@@ -1,8 +1,21 @@
 import { describe, expect, it } from "bun:test";
-import { SUBCOMMANDS, SUBCOMMANDS_HELP, resolveSubcommand } from "../utils/bf6commands/constants";
+import { BF6_DAYS_HELP, SUBCOMMANDS, SUBCOMMANDS_HELP, resolveSubcommand } from "../utils/bf6commands/constants";
 import { buildIntggProfileUrl, formatFullKillsLeaderboard, formatKillsLeaderboard, formatLeaderboardTable, formatProgressValue, formatStatPercent, formatStatRate, formatStatRatio } from "../utils/bf6commands/format";
 
 describe("BF6 command help", () => {
+    it("makes activity options discoverable and includes examples within Discord limits", () => {
+        expect(SUBCOMMANDS_HELP).toContain("bf6 days --help");
+        expect(BF6_DAYS_HELP).toContain("--all");
+        expect(BF6_DAYS_HELP).toContain("--records");
+        expect(BF6_DAYS_HELP).toContain("bf6 days leog 30d");
+        expect(BF6_DAYS_HELP.length).toBeLessThanOrEqual(2000);
+    });
+    it("resolves weekday activity commands", () => {
+        expect(resolveSubcommand("days")).toBe("days");
+        expect(resolveSubcommand("WEEKDAYS")).toBe("days");
+        expect(resolveSubcommand("activity")).toBe("days");
+    });
+
     it("lists every canonical subcommand exactly once", () => {
         for (const command of SUBCOMMANDS) {
             const token = `\`${command}\``;

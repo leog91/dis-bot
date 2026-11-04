@@ -53,13 +53,14 @@ export const SUBCOMMANDS = [
     "support",
     "recon",
     "history",
+    "days",
     "aliases",
 ] as const;
 
 export type SubCommand = typeof SUBCOMMANDS[number];
 
 const SUBCOMMAND_HELP_CATEGORIES: readonly { title: string; commands: readonly SubCommand[] }[] = [
-    { title: "Stats", commands: ["kills", "kills-full", "deaths", "revives", "score", "rank", "timePlayed", "stats", "teamplay", "ai", "playStyle", "history"] },
+    { title: "Stats", commands: ["kills", "kills-full", "deaths", "revives", "score", "rank", "timePlayed", "stats", "teamplay", "ai", "playStyle", "history", "days"] },
     { title: "Combat Gadget Groups", commands: ["combatgadgets", "launchers", "mines", "grenades", "melee"] },
     { title: "Launchers", commands: ["m320he", "m320thrm", "sichg1wp", "rpg", "mas148", "spire", "m136at", "igla"] },
     { title: "Explosives & Grenades", commands: ["ptkm1r", "mine", "claymore", "slam", "c4", "frag", "incendiary"] },
@@ -73,7 +74,26 @@ const SUBCOMMAND_HELP_CATEGORIES: readonly { title: string; commands: readonly S
 
 export const SUBCOMMANDS_HELP = SUBCOMMAND_HELP_CATEGORIES
     .map(({ title, commands }) => `**${title}**\n${commands.map((command) => `\`${command}\``).join(", ")}`)
-    .join("\n\n");
+    .join("\n\n") + "\n\nWeekday activity options and examples: bf6 days --help";
+
+export const BF6_DAYS_HELP = [
+    "**BF6 Activity — Help**",
+    "`bf6 days [player] [90d | --all] [--records]`",
+    "",
+    "• **player**: optional player name; omit for the whole group.",
+    "• **90d**: last 90 days by default. Use e.g. `30d` (1–3650 days).",
+    "• **--all**: all stored history, with the date range shown. Use instead of a day count.",
+    "• **--records**: busiest actual day, week and month, by most hours and most unique players, instead of the weekday chart.",
+    "",
+    "**Examples**",
+    "`bf6 days` — group weekday chart",
+    "`bf6 days leog 30d` — personal weekday chart",
+    "`bf6 days --all` — group weekday chart, all history",
+    "`bf6 days --all --records` — group all-time records",
+    "`bf6 days leog --all --records` — personal all-time records",
+    "",
+    "*UTC · Estimated from stored snapshots; no live refresh. Weeks run Monday–Sunday.*",
+].join("\n");
 
 export const SUBCOMMAND_ALIASES: Partial<Record<SubCommand, string[]>> = {
     timePlayed: ["time", "playtime", "hours"],
@@ -87,6 +107,7 @@ export const SUBCOMMAND_ALIASES: Partial<Record<SubCommand, string[]>> = {
     support: ["sup"],
     recon: ["rec"],
     history: ["monthly", "month"],
+    days: ["weekdays", "activity"],
     bans: ["ban", "banned"],
 };
 

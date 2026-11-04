@@ -1,11 +1,12 @@
 import { db } from "../db/index";
 import { bf6ItemSnapshots, bf6Scrapes, bf6Players, bf6PlayerAliases, bf6WeaponPlaystyles, bf6ClassSnapshots, type BF6PlayerStatus } from "../db/schema";
-import { desc, eq, sql, and, lt, gt, lte, gte } from "drizzle-orm";
+import { asc, desc, eq, sql, and, lt, gt, lte, gte } from "drizzle-orm";
 import { PlayerRank, updateBf6Data, loadPlayers } from "./bf6rank";
 import type { BF6GadgetSnapshotKey } from "./bf6gadgets";
 import type { BF6VehicleSnapshotKey } from "./bf6vehicles";
 import { matchBF6Player, normalizeBF6AliasHandle } from "./bf6identity";
 import { refreshPlayerAliases, syncConfiguredPlayerNames } from "./bf6aliasStore";
+import { aggregateWeekdayActivity } from "./bf6activity";
 
 // ================= CONFIG =================
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
@@ -14,6 +15,38 @@ const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
 export type BF6ItemLeaderboardKey = BF6GadgetSnapshotKey | BF6VehicleSnapshotKey;
 
 export type BF6ItemSortKey = "kills" | "timePlayed";
+
+// Local history only: unlike live leaderboards, this must not trigger upstream refreshes.
+export async function getWeekdayActivity(playerInput: string, days: number | null, end = new Date()) {
+    const player = playerInput ? await resolveBF6Player(playerInput) : null;
+    if (playerInput && !player) return null;
+    const earliest = days === null ? await db.select({ scrapedAt: bf6Scrapes.scrapedAt }).from(bf6Scrapes)
+        .where(and(lte(bf6Scrapes.scrapedAt, end), player ? eq(bf6Scrapes.playerId, player.id) : undefined))
+        .orderBy(asc(bf6Scrapes.scrapedAt)).limit(1) : [];
+    const start = days === null ? earliest[0]?.scrapedAt ?? end : new Date(end.getTime() - days * 86400000);
+    const fields = {
+        playerId: bf6Scrapes.playerId,
+        timePlayedValue: bf6Scrapes.timePlayedValue,
+        scrapedAt: bf6Scrapes.scrapedAt,
+        source: bf6Scrapes.source,
+    };
+    const baselineDates = db.select({
+        playerId: bf6Scrapes.playerId,
+        date: sql`MAX(${bf6Scrapes.scrapedAt})`.as("date"),
+    }).from(bf6Scrapes).where(and(
+        lt(bf6Scrapes.scrapedAt, start),
+        player ? eq(bf6Scrapes.playerId, player.id) : undefined,
+    )).groupBy(bf6Scrapes.playerId).as("activity_baselines");
+    const baseline = await db.select(fields).from(bf6Scrapes).innerJoin(baselineDates, and(
+        eq(bf6Scrapes.playerId, baselineDates.playerId),
+        eq(bf6Scrapes.scrapedAt, baselineDates.date),
+    ));
+    const snapshots = await db.select(fields).from(bf6Scrapes).where(and(
+        gte(bf6Scrapes.scrapedAt, start), lte(bf6Scrapes.scrapedAt, end),
+        player ? eq(bf6Scrapes.playerId, player.id) : undefined,
+    ));
+    return { player, start, end, ...aggregateWeekdayActivity([...baseline, ...snapshots], start, end) };
+}
 
 export type BF6ItemLeaderboardRow = {
     playerId: string;

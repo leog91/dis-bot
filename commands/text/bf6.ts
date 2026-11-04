@@ -14,6 +14,7 @@ import {
     itemsHandler,
     classesHandler,
     historyHandler,
+    daysHandler,
     refreshHandler,
     playerHandler,
 } from "../../utils/bf6commands";
@@ -64,6 +65,7 @@ const HANDLERS: Partial<Record<SubCommand, (msg: Message, args: string[], reply:
     support: (m, a, r) => classesHandler("support", m, a, r),
     recon: (m, a, r) => classesHandler("recon", m, a, r),
     history: (m, a, r) => historyHandler("history", m, a, r),
+    days: (m, a, r) => daysHandler("days", m, a, r),
     aliases: (m, a, r) => playerHandler("aliases", m, a, r),
     refresh: (m, a, r) => refreshHandler("refresh", m, a, r),
     bans: async (_msg, _args, reply) => {
