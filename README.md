@@ -76,6 +76,29 @@ You can also run them manually:
 
 `bun run db:migrate`
 
+## BF6 Web Dashboard
+
+Run `bun run web` and open <http://127.0.0.1:3000>. Press `Ctrl+C` to stop it.
+If port 3000 is taken, use `BF6_WEB_PORT=3001 bun run web`.
+
+The dashboard is local-only and can run alongside the bot or while the bot is off.
+It opens the existing `DB_FILE_PATH` read-only (or `DB_FILE_NAME` as a fallback).
+It does not log in to Discord, run migrations, or fetch upstream stats. Reload
+the page to see new snapshots saved by the bot.
+
+Sort the leaderboard by human kills, K/D, revives, win rate, or playtime.
+Select a player for career, combat, and teamplay totals; 7-, 30-, 90-, or 365-day
+charts; and recent snapshot values. Player pages also show the latest saved
+weapon, class, vehicle, and gadget stats. Those breakdowns are not stored as history.
+Player pages also show saved profile links and alias history where available.
+The dashboard navigation includes monthly progress rankings, weekday activity and
+records, and cross-player gear rankings. Activity figures are estimates from saved
+playtime snapshots, not session logs.
+Use **Recent gains** to rank players by observed progress or **Compare players**
+to compare two players over the same 7-, 30-, or 90-day range, with snapshot
+coverage shown. Player pages also show personal bests for kills, revives, and
+playtime in completed months with comparable snapshots.
+
 ## Private Assets
 
 You can keep private audio/images in a separate GitHub repo and point the bot to a local clone.
